@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: motoclub
+      POSTGRES_USER: motoclub
+      POSTGRES_PASSWORD: motoclub
+    ports:
+      - "5432:5432"
+    volumes:
+      - motoclub-db:/var/lib/postgresql/data
+
+volumes:
+  motoclub-db:
