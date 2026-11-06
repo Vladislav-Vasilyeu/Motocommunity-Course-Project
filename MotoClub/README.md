@@ -1,57 +1,51 @@
 # MotoClub
 
-Курсовой проект — веб-приложение для мотоциклетного сообщества с функциями социальной сети, совместных поездок и доской объявлений.
+Адаптивное веб-приложение для мотоциклетного сообщества: профили, гараж, публикации, друзья, сообщества, объявления и совместные поездки с точками на карте.
 
-## Технологии
+## Стек
 
-- Клиент: React, TypeScript, Vite
-- API: Node.js, Express 5, TypeScript
-- База данных: PostgreSQL, Prisma ORM 7
-- Карты: Leaflet + OpenStreetMap (предусмотрено планом)
+- Клиент: React, TypeScript, Vite, Leaflet и OpenStreetMap.
+- API: Node.js, Express 5, TypeScript.
+- База данных: PostgreSQL 17, Prisma ORM 7.
+- Архитектура: модульный монолит; клиент обращается к HTTP API.
 
-Приложение строится как модульный монолит: web-клиент обращается к HTTP API, сервер содержит бизнес-логику и работает с PostgreSQL через Prisma.
+## Запуск на Windows
 
-## Структура
+Нужны Node.js 24+ и Docker Desktop.
 
-- `src/` — клиентское приложение React + TypeScript
-- `server/src/` — Express API, обработчики ошибок и доступ к БД
-- `server/prisma/` — схема и миграции базы данных
-- `docs/` — требования, архитектура и ER-диаграмма
-
-## Требования
-
-- Node.js 24 или новее
-- Docker Desktop с Docker Compose
-
-## Первый запуск
-
-1. Установить зависимости клиента и API:
-
-   ```bash
-   npm install
-   npm --prefix server install
-   ```
-
-2. Создать локальную конфигурацию и запустить PostgreSQL:
+1. Установите зависимости: `npm install` и `npm --prefix server install`.
+2. Скопируйте шаблон окружения: `Copy-Item .env.example .env`.
+3. Запустите PostgreSQL: `docker compose up -d db`.
+4. Примените миграции, сгенерируйте Prisma Client и добавьте демонстрационные записи:
 
    ```powershell
-   Copy-Item .env.example .env
-   docker compose up -d db
-   ```
-
-3. Создать Prisma Client и применить миграцию:
-
-   ```bash
+   npm --prefix server run db:deploy
    npm --prefix server run db:generate
-   npm --prefix server run db:migrate -- --name init
+   npm --prefix server run db:seed
    ```
 
-4. Запустить клиент и API вместе либо в отдельных терминалах:
+5. Запустите клиент и API: `npm run dev:all`.
 
-   ```bash
-   npm run dev:all
-   ```
+Клиент откроется по адресу <http://localhost:5173>, API — по адресу <http://localhost:3000>. Проверка API и подключения к базе: <http://localhost:3000/health>.
 
-   Клиент: <http://localhost:5173>, API health check: <http://localhost:3000/health>.
+Для локальной демонстрации после выполнения seed можно войти как `demo@motoclub.local` с паролем `RideSafe2026!`. Демонстрационные учётные данные предназначены только для локальной разработки; не разворачивайте seed-данные в публичном окружении.
 
-Секреты и локальный `.env` не добавляются в Git. Для переменных окружения используйте `.env.example` как шаблон.
+Перед публичным развёртыванием задайте `AUTH_SECRET` длиной не менее 32 символов. `.env` и секреты исключены из Git; в репозитории хранится только `.env.example`.
+
+## Реализованные HTTP-маршруты
+
+- `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`.
+- `GET /api/users/:id`, `PATCH /api/profile`.
+- CRUD гаража через `/api/motorcycles`.
+- Лента и публикации через `/api/posts`.
+- Заявки и список друзей через `/api/friend-requests` и `/api/friends`.
+- Сообщества и членство через `/api/communities`.
+- Поиск и управление объявлениями через `/api/listings`.
+- Точки и поездки через `/api/places` и `/api/trips`.
+
+## Документы
+
+- [Требования MVP](docs/requirements.md)
+- [Архитектура](docs/architecture.md)
+- [ER-диаграмма](docs/er-diagram.md)
+- [UX/UI варианты и анализ аналогов](docs/design-options.md)
