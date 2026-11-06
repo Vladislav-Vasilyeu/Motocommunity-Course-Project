@@ -1,6 +1,16 @@
 import type { RequestHandler } from "express";
 import { cookieValue, readSessionToken } from "../lib/auth.js";
 
+export const optionalAuth: RequestHandler = (request, _response, next) => {
+  const token = cookieValue(request.headers.cookie, "motoclub_session");
+  const session = token ? readSessionToken(token) : null;
+  if (session) {
+    request.userId = session.userId;
+    request.userRole = session.role;
+  }
+  next();
+};
+
 export const requireAuth: RequestHandler = (request, response, next) => {
   const token = cookieValue(request.headers.cookie, "motoclub_session");
   const session = token ? readSessionToken(token) : null;

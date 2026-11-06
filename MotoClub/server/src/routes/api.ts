@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../db/client.js";
-import { requireAuth } from "../middleware/auth.js";
+import { optionalAuth, requireAuth } from "../middleware/auth.js";
 
 export const apiRouter = Router();
 const take = 50;
@@ -187,6 +187,16 @@ apiRouter.get("/api/communities", async (_request, response, next) => {
   } catch (error) { next(error); }
 });
 
+apiRouter.get("/api/communities/:id", optionalAuth, async (request, response, next) => {
+  try {
+    const communityId = routeParam(request.params.id);
+    const community = await prisma.community.findUnique({ where: { id: communityId }, include: { _count: { select: { members: true, posts: true } } } });
+    if (!community) { response.status(404).json({ error: { code: "NOT_FOUND", message: "Community not found" } }); return; }
+    const membership = request.userId ? await prisma.communityMember.findUnique({ where: { communityId_userId: { communityId, userId: request.userId } }, select: { userId: true } }) : null;
+    response.json({ community, isMember: Boolean(membership) });
+  } catch (error) { next(error); }
+});
+
 apiRouter.post("/api/communities", requireAuth, async (request, response, next) => {
   try {
     const name = text(request.body?.name); const description = text(request.body?.description); const city = text(request.body?.city);
@@ -233,7 +243,7 @@ apiRouter.post("/api/listings", requireAuth, async (request, response, next) => 
     if (title.length < 4 || title.length > 120 || description.length > 3000 || !category || category.length > 40 || !Number.isFinite(price) || price < 0 || price > 999999999 || city.length > 100 || !["new", "used", "for-parts"].includes(condition)) {
       response.status(400).json({ error: { code: "INVALID_LISTING", message: "Проверьте название, категорию, состояние и цену" } }); return;
     }
-    const listing = await prisma.listing.create({ data: { sellerId: request.userId!, title, description, category, city, price, condition } });
+    const listing = await prisma.listing.create({ data: { sellerId: request.userId!, title, description, category, city, price, condition }, include: { seller: { select: { id: true, displayName: true, profile: { select: { city: true } } } } } });
     response.status(201).json({ listing });
   } catch (error) { next(error); }
 });
@@ -252,7 +262,7 @@ apiRouter.patch("/api/listings/:id", requireAuth, async (request, response, next
     if (title.length < 4 || title.length > 120 || description.length > 3000 || !category || category.length > 40 || !Number.isFinite(price) || price < 0 || price > 999999999 || city.length > 100 || !["new", "used", "for-parts"].includes(condition)) {
       response.status(400).json({ error: { code: "INVALID_LISTING", message: "\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u043f\u043e\u043b\u044f \u043e\u0431\u044a\u044f\u0432\u043b\u0435\u043d\u0438\u044f" } }); return;
     }
-    const listing = await prisma.listing.update({ where: { id: existing.id }, data: { title, description, category, city, price, condition, status } });
+    const listing = await prisma.listing.update({ where: { id: existing.id }, data: { title, description, category, city, price, condition, status }, include: { seller: { select: { id: true, displayName: true, profile: { select: { city: true } } } } } });
     response.json({ listing });
   } catch (error) { next(error); }
 });
@@ -282,8 +292,11 @@ apiRouter.post("/api/places", requireAuth, async (request, response, next) => {
   } catch (error) { next(error); }
 });
 
-apiRouter.get("/api/trips", async (_request, response, next) => {
-  try { response.json({ trips: await prisma.trip.findMany({ where: { status: "PLANNED" }, orderBy: { startsAt: "asc" }, take, include: { organizer: { select: { id: true, displayName: true } }, waypoints: { orderBy: { sequence: "asc" } }, _count: { select: { participants: true } } } }) }); }
+apiRouter.get("/api/trips", optionalAuth, async (request, response, next) => {
+  try {
+    const trips = await prisma.trip.findMany({ where: { status: "PLANNED" }, orderBy: { startsAt: "asc" }, take, include: { organizer: { select: { id: true, displayName: true } }, waypoints: { orderBy: { sequence: "asc" } }, participants: { where: { userId: request.userId ?? "" }, select: { userId: true } }, _count: { select: { participants: true } } } });
+    response.json({ trips: trips.map(({ participants, ...trip }) => ({ ...trip, isJoined: participants.length > 0 })) });
+  }
   catch (error) { next(error); }
 });
 
@@ -294,7 +307,7 @@ apiRouter.post("/api/trips", requireAuth, async (request, response, next) => {
     if (title.length < 4 || title.length > 120 || description.length > 2000 || Number.isNaN(startsAt.valueOf()) || waypoints.length < 2 || waypoints.length > 30 || waypoints.some((p: { latitude?: unknown; longitude?: unknown }) => !Number.isFinite(Number(p.latitude)) || !Number.isFinite(Number(p.longitude)) || Number(p.latitude) < -90 || Number(p.latitude) > 90 || Number(p.longitude) < -180 || Number(p.longitude) > 180)) {
       response.status(400).json({ error: { code: "INVALID_TRIP", message: "Укажите название, дату и минимум две точки маршрута" } }); return;
     }
-    const trip = await prisma.trip.create({ data: { organizerId: request.userId!, title, description, startsAt, waypoints: { create: waypoints.map((p: { latitude: number; longitude: number; label?: string }, i: number) => ({ sequence: i + 1, latitude: p.latitude, longitude: p.longitude, label: text(p.label).slice(0, 100) })) } }, include: { waypoints: { orderBy: { sequence: "asc" } } } });
+    const trip = await prisma.trip.create({ data: { organizerId: request.userId!, title, description, startsAt, waypoints: { create: waypoints.map((p: { latitude: number; longitude: number; label?: string }, i: number) => ({ sequence: i + 1, latitude: p.latitude, longitude: p.longitude, label: text(p.label).slice(0, 100) })) } }, include: { organizer: { select: { id: true, displayName: true } }, waypoints: { orderBy: { sequence: "asc" } }, _count: { select: { participants: true } } } });
     response.status(201).json({ trip });
   } catch (error) { next(error); }
 });
@@ -304,6 +317,13 @@ apiRouter.post("/api/trips/:id/join", requireAuth, async (request, response, nex
     const tripId = routeParam(request.params.id);
     if (!await prisma.trip.findFirst({ where: { id: tripId, status: "PLANNED" } })) { response.status(404).json({ error: { code: "NOT_FOUND", message: "Поездка не найдена" } }); return; }
     await prisma.tripParticipant.upsert({ where: { tripId_userId: { tripId, userId: request.userId! } }, create: { tripId, userId: request.userId! }, update: {} });
+    response.status(204).end();
+  } catch (error) { next(error); }
+});
+
+apiRouter.delete("/api/trips/:id/membership", requireAuth, async (request, response, next) => {
+  try {
+    await prisma.tripParticipant.deleteMany({ where: { tripId: routeParam(request.params.id), userId: request.userId } });
     response.status(204).end();
   } catch (error) { next(error); }
 });
