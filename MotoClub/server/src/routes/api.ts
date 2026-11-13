@@ -1,8 +1,13 @@
 import { Router } from "express";
 import { prisma } from "../db/client.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
+import { parseCoordinate } from "../lib/coordinates.js";
+import { routesRouter } from "./routes.js";
+import { dialogsRouter } from "./dialogs.js";
 
 export const apiRouter = Router();
+apiRouter.use(routesRouter);
+apiRouter.use(dialogsRouter);
 const take = 50;
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 const optionalNumber = (value: unknown) => (value === "" || value == null ? null : Number(value));
@@ -275,16 +280,21 @@ apiRouter.delete("/api/listings/:id", requireAuth, async (request, response, nex
   } catch (error) { next(error); }
 });
 
-apiRouter.get("/api/places", async (_request, response, next) => {
-  try { response.json({ places: await prisma.place.findMany({ orderBy: { createdAt: "desc" }, take }) }); }
+apiRouter.get("/api/places", async (request, response, next) => {
+  const category = text(request.query.category).slice(0, 40);
+  try { response.json({ places: await prisma.place.findMany({
+    where: category ? { category: { equals: category, mode: "insensitive" } } : undefined,
+    orderBy: { createdAt: "desc" }, take,
+  }) }); }
   catch (error) { next(error); }
 });
 
 apiRouter.post("/api/places", requireAuth, async (request, response, next) => {
   try {
     const name = text(request.body?.name); const category = text(request.body?.category); const city = text(request.body?.city);
-    const latitude = Number(request.body?.latitude); const longitude = Number(request.body?.longitude);
-    if (name.length < 2 || name.length > 100 || category.length < 2 || category.length > 40 || !Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+    const latitude = parseCoordinate(request.body?.latitude, 90);
+    const longitude = parseCoordinate(request.body?.longitude, 180);
+    if (name.length < 2 || name.length > 100 || category.length < 2 || category.length > 40 || latitude === null || longitude === null) {
       response.status(400).json({ error: { code: "INVALID_PLACE", message: "Проверьте название, категорию и координаты" } }); return;
     }
     const place = await prisma.place.create({ data: { creatorId: request.userId!, name, category, city, latitude, longitude, description: text(request.body?.description).slice(0, 1000) } });
