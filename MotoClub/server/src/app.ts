@@ -3,6 +3,7 @@ import cors from "cors";
 import { errorHandler } from "./middleware/error-handler.js";
 import { authRouter } from "./routes/auth.js";
 import { apiRouter } from "./routes/api.js";
+import { tripParticipantsRouter } from "./routes/trip-participants.js";
 import { healthRouter } from "./routes/health.js";
 
 export function createApp() {
@@ -12,6 +13,7 @@ export function createApp() {
   app.use(express.json({ limit: "64kb" }));
   app.use(authRouter);
   app.use(apiRouter);
+  app.use(tripParticipantsRouter);
   app.use(healthRouter);
   app.use((_request, response) => {
     response.status(404).json({

@@ -51,6 +51,12 @@ model User {
   tripsOrganized         Trip[]            @relation("TripOrganizer")
   tripParticipations     TripParticipant[]
   placesCreated          Place[]           @relation("PlaceCreator")
+  routesAuthored         Route[]           @relation("RouteAuthor")
+  routeFavorites         RouteFavorite[]
+  dialogsA               Dialog[]          @relation("DialogUserA")
+  dialogsB               Dialog[]          @relation("DialogUserB")
+  messagesSent           Message[]         @relation("MessageSender")
+  messagesReceived       Message[]         @relation("MessageRecipient")
 }
 
 model UserProfile {
@@ -216,4 +222,70 @@ model Place {
   tripWaypoints TripWaypoint[]
 
   @@index([category, city])
+}
+
+model Route {
+  id          String          @id @default(uuid())
+  authorId    String
+  title       String
+  description String          @default("")
+  createdAt   DateTime        @default(now())
+  author      User            @relation("RouteAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  waypoints   RouteWaypoint[]
+  favorites   RouteFavorite[]
+
+  @@index([createdAt, id])
+}
+
+model RouteWaypoint {
+  id        String  @id @default(uuid())
+  routeId   String
+  position  Int
+  title     String  @default("")
+  latitude  Decimal @db.Decimal(9, 6)
+  longitude Decimal @db.Decimal(9, 6)
+  route     Route   @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@unique([routeId, position])
+}
+
+model RouteFavorite {
+  routeId   String
+  userId    String
+  createdAt DateTime @default(now())
+  route     Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([routeId, userId])
+  @@index([userId])
+}
+
+model Dialog {
+  id        String    @id @default(uuid())
+  userAId   String
+  userBId   String
+  updatedAt DateTime  @updatedAt
+  userA     User      @relation("DialogUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB     User      @relation("DialogUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  messages  Message[]
+
+  @@unique([userAId, userBId])
+  @@index([userAId, updatedAt])
+  @@index([userBId, updatedAt])
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  dialogId    String
+  senderId    String
+  recipientId String
+  content     String
+  createdAt   DateTime @default(now())
+  dialog      Dialog   @relation(fields: [dialogId], references: [id], onDelete: Cascade)
+  sender      User     @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient   User     @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([dialogId, createdAt, id])
+  @@index([senderId])
+  @@index([recipientId])
 }
