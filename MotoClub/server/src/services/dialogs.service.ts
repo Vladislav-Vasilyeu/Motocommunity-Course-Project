@@ -1,4 +1,5 @@
 import { prisma } from "../db/client.js";
+import { createNotification } from "./notifications.service.js";
 
 const userSummary = { id: true, displayName: true };
 const messageFields = { id: true, senderId: true, recipientId: true, content: true, createdAt: true };
@@ -73,9 +74,11 @@ export async function sendMessage(senderId: string, recipientId: string, content
       data: { updatedAt: new Date() },
       select: { id: true },
     });
-    return tx.message.create({
+    const message = await tx.message.create({
       data: { dialogId: dialog.id, senderId, recipientId, content },
       select: messageFields,
     });
+    await createNotification(tx, "NEW_MESSAGE", senderId, recipientId);
+    return message;
   });
 }

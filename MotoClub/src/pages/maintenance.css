@@ -1,0 +1,132 @@
+.maintenance-page {
+  color: var(--road-ink);
+}
+
+.maintenance-page .page-title h1 {
+  color: var(--road-ink);
+}
+
+.maintenance-page .page-description,
+.maintenance-page .eyebrow,
+.maintenance-meta,
+.maintenance-form-footer p {
+  color: var(--road-muted);
+}
+
+.maintenance-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: 8px;
+  color: var(--road-link);
+  font-weight: 700;
+}
+
+.maintenance-notice {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--road-border);
+  border-radius: 14px;
+  background: var(--elevated);
+}
+
+.maintenance-notice p {
+  margin: 4px 0 0;
+}
+
+.maintenance-page .panel {
+  background: var(--road-surface);
+  border-color: var(--road-border);
+}
+
+.maintenance-records {
+  padding: 18px;
+  overflow-wrap: anywhere;
+}
+
+.maintenance-records h2 {
+  margin: 0 0 12px;
+}
+
+.maintenance-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.maintenance-record {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--road-border);
+}
+
+.maintenance-record h3,
+.maintenance-record p {
+  margin: 0;
+}
+
+.maintenance-badge {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--elevated);
+  color: var(--road-ink);
+  font-weight: 700;
+}
+
+.maintenance-meta {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 8px;
+  font-size: 13px;
+}
+
+.maintenance-meta span::before {
+  content: '·';
+  margin-inline-end: 8px;
+}
+
+.maintenance-full {
+  grid-column: 1 / -1;
+}
+
+.maintenance-form label {
+  min-width: 0;
+  color: var(--road-ink);
+}
+
+.maintenance-form :is(input, textarea) {
+  min-height: 44px;
+  color: var(--road-ink);
+  background: var(--road-surface);
+  border-color: var(--road-border);
+}
+
+.maintenance-form-footer,
+.maintenance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.maintenance-form-footer {
+  justify-content: space-between;
+}
+
+@media (max-width: 480px) {
+  .maintenance-record {
+    grid-template-columns: auto minmax(0, 1fr);
+    row-gap: 8px;
+  }
+
+  .maintenance-record .button {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

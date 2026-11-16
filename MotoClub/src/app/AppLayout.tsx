@@ -29,9 +29,10 @@ export default function AppLayout() {
       {navigation(false)}
       <div className="road-account">
         {user && <NavLink to="/messages" className="road-icon-link" aria-label="Сообщения"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 4h16v12H9l-5 4zM8 8h8m-8 4h6"/></svg></NavLink>}
+        {user && <NavLink to="/notifications" className="road-icon-link" aria-label="Уведомления"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9a6 6 0 0 1 12 0v6l2 3H4l2-3V9Zm4 12h4"/></svg></NavLink>}
         {user ? <details className="road-user" key={pathname}>
           <summary aria-label="Меню профиля">{user.displayName.slice(0, 1).toUpperCase()}</summary>
-          <div className="road-user-menu"><Link to="/profile">Профиль</Link><Link to="/garage">Мой гараж</Link><Link to="/friends">Друзья</Link><button onClick={async () => { await signOut(); navigate('/') }}>Выйти</button></div>
+          <div className="road-user-menu"><Link to="/profile">Профиль</Link><Link to="/garage">Мой гараж</Link><Link to="/market?favorites=1">Избранное</Link><Link to="/friends">Друзья</Link><button onClick={async () => { await signOut(); navigate('/') }}>Выйти</button></div>
         </details> : <Link className="button button-secondary" to="/login">Войти</Link>}
       </div>
     </header>

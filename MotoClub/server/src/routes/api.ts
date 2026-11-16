@@ -4,10 +4,18 @@ import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { parseCoordinate } from "../lib/coordinates.js";
 import { routesRouter } from "./routes.js";
 import { dialogsRouter } from "./dialogs.js";
+import { maintenanceRouter } from "./maintenance.js";
+import { notificationsRouter } from "./notifications.js";
+import { listingFavoritesRouter } from "./listing-favorites.js";
+import { listingFilters, sellerSummary } from "../services/listing-favorites.service.js";
+import { respondToFriendRequest, sendFriendRequest } from "../services/friend-requests.service.js";
 
 export const apiRouter = Router();
 apiRouter.use(routesRouter);
 apiRouter.use(dialogsRouter);
+apiRouter.use(maintenanceRouter);
+apiRouter.use(notificationsRouter);
+apiRouter.use(listingFavoritesRouter);
 const take = 50;
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 const optionalNumber = (value: unknown) => (value === "" || value == null ? null : Number(value));
@@ -156,18 +164,10 @@ apiRouter.post("/api/friend-requests/:userId", requireAuth, async (request, resp
   try {
     const targetUserId = routeParam(request.params.userId);
     if (targetUserId === request.userId) { response.status(400).json({ error: { code: "INVALID_REQUEST", message: "Нельзя добавить себя в друзья" } }); return; }
-    const receiver = await prisma.user.findUnique({ where: { id: targetUserId }, select: { id: true } });
-    if (!receiver) { response.status(404).json({ error: { code: "NOT_FOUND", message: "Пользователь не найден" } }); return; }
-    const [same, reverse, friendship] = await Promise.all([
-      prisma.friendRequest.findUnique({ where: { senderId_receiverId: { senderId: request.userId!, receiverId: receiver.id } } }),
-      prisma.friendRequest.findUnique({ where: { senderId_receiverId: { senderId: receiver.id, receiverId: request.userId! } } }),
-      prisma.friendship.findFirst({ where: { OR: [{ userAId: request.userId, userBId: receiver.id }, { userAId: receiver.id, userBId: request.userId }] } }),
-    ]);
-    if (friendship || same?.status === "PENDING" || reverse?.status === "PENDING") { response.status(409).json({ error: { code: "REQUEST_EXISTS", message: "Заявка уже отправлена или вы уже друзья" } }); return; }
-    const friendRequest = same
-      ? await prisma.friendRequest.update({ where: { id: same.id }, data: { status: "PENDING" } })
-      : await prisma.friendRequest.create({ data: { senderId: request.userId!, receiverId: receiver.id } });
-    response.status(201).json({ request: friendRequest });
+    const result = await sendFriendRequest(request.userId!, targetUserId);
+    if (result.status === "missing-user") { response.status(404).json({ error: { code: "NOT_FOUND", message: "Пользователь не найден" } }); return; }
+    if (result.status === "exists") { response.status(409).json({ error: { code: "REQUEST_EXISTS", message: "Заявка уже отправлена или вы уже друзья" } }); return; }
+    response.status(201).json({ request: result.request });
   } catch (error) { next(error); }
 });
 
@@ -175,12 +175,8 @@ apiRouter.post("/api/friend-requests/:id/respond", requireAuth, async (request, 
   try {
     const status = request.body?.status === "accept" ? "ACCEPTED" : request.body?.status === "decline" ? "DECLINED" : null;
     if (!status) { response.status(400).json({ error: { code: "INVALID_STATUS", message: "Укажите accept или decline" } }); return; }
-    const friendRequest = await prisma.friendRequest.findFirst({ where: { id: routeParam(request.params.id), receiverId: request.userId, status: "PENDING" } });
-    if (!friendRequest) { response.status(404).json({ error: { code: "NOT_FOUND", message: "Заявка не найдена" } }); return; }
-    await prisma.$transaction(async (tx) => {
-      await tx.friendRequest.update({ where: { id: friendRequest.id }, data: { status } });
-      if (status === "ACCEPTED") await tx.friendship.create({ data: { userAId: friendRequest.senderId, userBId: friendRequest.receiverId } });
-    });
+    const changed = await respondToFriendRequest(request.userId!, routeParam(request.params.id), status);
+    if (!changed) { response.status(404).json({ error: { code: "NOT_FOUND", message: "Заявка не найдена" } }); return; }
     response.json({ status });
   } catch (error) { next(error); }
 });
@@ -230,14 +226,20 @@ apiRouter.delete("/api/communities/:id/membership", requireAuth, async (request,
   } catch (error) { next(error); }
 });
 
-apiRouter.get("/api/listings", async (request, response, next) => {
+apiRouter.get("/api/listings", optionalAuth, async (request, response, next) => {
   try {
-    const q = text(request.query.q); const category = text(request.query.category); const city = text(request.query.city);
+    response.vary("Cookie");
+    if (request.userId) response.setHeader("Cache-Control", "private");
     const listings = await prisma.listing.findMany({
-      where: { status: "ACTIVE", ...(category ? { category } : {}), ...(city ? { city: { contains: city, mode: "insensitive" as const } } : {}), ...(q ? { OR: [{ title: { contains: q, mode: "insensitive" as const } }, { description: { contains: q, mode: "insensitive" as const } }] } : {}) },
-      orderBy: { createdAt: "desc" }, take, include: { seller: { select: { id: true, displayName: true, profile: { select: { city: true } } } } },
+      where: { status: "ACTIVE", ...listingFilters(request.query) },
+      orderBy: { createdAt: "desc" },
+      take,
+      include: {
+        seller: { select: sellerSummary },
+        favorites: request.userId ? { where: { userId: request.userId }, select: { userId: true } } : false,
+      },
     });
-    response.json({ listings });
+    response.json({ listings: listings.map(({ favorites, ...listing }) => ({ ...listing, isFavorite: Boolean(favorites?.length) })) });
   } catch (error) { next(error); }
 });
 

@@ -2,6 +2,8 @@ import { lazy, Suspense } from 'react'
 import { createBrowserRouter } from 'react-router'
 import AppLayout from './AppLayout'
 
+const NotificationsPage = lazy(() => import('../pages/NotificationsPage'))
+const MaintenancePage = lazy(() => import('../pages/MaintenancePage'))
 const FeedPage = lazy(() => import('../pages/FeedPage'))
 const TripsPage = lazy(() => import('../pages/TripsPage'))
 const CommunitiesPage = lazy(() => import('../pages/CommunitiesPage'))
@@ -32,6 +34,10 @@ export const router = createBrowserRouter([
     { path: '/messages', element: wrap(MessagesPage) },
     { path: '/messages/:userId', element: wrap(DialogPage) },
     { path: '/map', element: wrap(MapPage) },
+    { path: '/notifications', element: wrap(NotificationsPage) },
+    { path: '/garage/:motorcycleId/maintenance', element: wrap(MaintenancePage) },
+    { path: '/garage/:motorcycleId/maintenance/new', element: wrap(MaintenancePage) },
+    { path: '/garage/:motorcycleId/maintenance/:recordId/edit', element: wrap(MaintenancePage) },
     { path: '/garage', element: wrap(GaragePage) },
     { path: '/friends', element: wrap(FriendsPage) },
     { path: '/profile', element: wrap(ProfilePage) },
