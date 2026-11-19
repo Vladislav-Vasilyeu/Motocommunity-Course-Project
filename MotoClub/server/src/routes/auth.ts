@@ -52,7 +52,7 @@ authRouter.post("/api/auth/login", async (request, response, next) => {
     const email = normalizeEmail(request.body?.email);
     const password = typeof request.body?.password === "string" ? request.body.password : "";
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user || !(await verifyPassword(password, user.passwordHash))) {
+    if (!user?.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
       response.status(401).json({ error: { code: "INVALID_CREDENTIALS", message: "Неверный email или пароль" } });
       return;
     }

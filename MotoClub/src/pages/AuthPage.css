@@ -1,0 +1,19 @@
+.auth-form .auth-google {
+  min-height: 44px;
+  padding: 0 12px;
+  gap: 10px;
+  border: 1px solid var(--google-border);
+  background: var(--google-bg);
+  color: var(--google-ink);
+  font: 500 14px/20px "Google Sans", Roboto, Arial, sans-serif;
+}
+
+.auth-form .auth-google:hover {
+  background: var(--google-hover);
+}
+
+.auth-form .auth-google img {
+  flex: none;
+  background: var(--google-logo-bg);
+  object-fit: contain;
+}

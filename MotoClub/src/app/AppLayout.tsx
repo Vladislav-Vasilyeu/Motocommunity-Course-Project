@@ -1,6 +1,9 @@
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../features/auth/AuthProvider'
 import Icon from '../shared/Icon'
+import { useLocale } from '../shared/i18n'
+import brandMarkLime from '../assets/moto-club-mark-lime.svg'
+import { useTheme } from '../features/preferences/theme'
 import brandMark from '../assets/moto-club-mark.svg'
 import './RoadPulse.css'
 
@@ -12,32 +15,35 @@ const links = [
 ]
 
 export default function AppLayout() {
+  const { t } = useLocale()
+  const { resolvedTheme } = useTheme()
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const inTravel = /^\/(trips|routes|map)(\/|$)/.test(pathname)
-  const navigation = (mobile: boolean) => <nav className={mobile ? 'road-mobile-nav' : 'road-nav'} aria-label="Основная навигация">
+  const navigation = (mobile: boolean) => <nav className={mobile ? 'road-mobile-nav' : 'road-nav'} aria-label={t("Основная навигация")}>
     {links.map(({to, label, icon, end}) => <NavLink key={to} to={to} end={end} aria-current={to === '/trips' && inTravel ? 'page' : undefined}
       className={({isActive}) => isActive || (to === '/trips' && inTravel) ? 'current' : ''}>
-      {mobile && <Icon name={icon}/>}<span>{label}</span>
+      {mobile && <Icon name={icon}/>}<span>{t(label)}</span>
     </NavLink>)}
   </nav>
   return <div className="road-app">
-    <a className="road-skip" href="#main-content">Перейти к содержанию</a>
+    <a className="road-skip" href="#main-content">{t("Перейти к содержанию")}</a>
     <header className="road-header">
-      <Link to="/" className="road-brand"><img src={brandMark} alt="" width="30" height="22"/>Moto Club</Link>
+      <Link to="/" className="road-brand"><img src={resolvedTheme === 'dark' ? brandMarkLime : brandMark} alt="" width="30" height="22"/>Moto Club</Link>
       {navigation(false)}
       <div className="road-account">
-        {user && <NavLink to="/messages" className="road-icon-link" aria-label="Сообщения"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 4h16v12H9l-5 4zM8 8h8m-8 4h6"/></svg></NavLink>}
-        {user && <NavLink to="/notifications" className="road-icon-link" aria-label="Уведомления"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9a6 6 0 0 1 12 0v6l2 3H4l2-3V9Zm4 12h4"/></svg></NavLink>}
+        {!user && <NavLink to="/settings" className="road-icon-link" aria-label={t("Настройки")}><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2" fill="var(--road-surface)"/><circle cx="15" cy="12" r="2" fill="var(--road-surface)"/><circle cx="9" cy="18" r="2" fill="var(--road-surface)"/></svg></NavLink>}
+        {user && <NavLink to="/messages" className="road-icon-link" aria-label={t("Сообщения")}><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 4h16v12H9l-5 4zM8 8h8m-8 4h6"/></svg></NavLink>}
+        {user && <NavLink to="/notifications" className="road-icon-link" aria-label={t("Уведомления")}><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9a6 6 0 0 1 12 0v6l2 3H4l2-3V9Zm4 12h4"/></svg></NavLink>}
         {user ? <details className="road-user" key={pathname}>
-          <summary aria-label="Меню профиля">{user.displayName.slice(0, 1).toUpperCase()}</summary>
-          <div className="road-user-menu"><Link to="/profile">Профиль</Link><Link to="/garage">Мой гараж</Link><Link to="/market?favorites=1">Избранное</Link><Link to="/friends">Друзья</Link><button onClick={async () => { await signOut(); navigate('/') }}>Выйти</button></div>
-        </details> : <Link className="button button-secondary" to="/login">Войти</Link>}
+          <summary aria-label={t("Меню профиля")}>{user.displayName.slice(0, 1).toUpperCase()}</summary>
+          <div className="road-user-menu"><Link to="/profile">{t("Профиль")}</Link><Link to="/garage">{t("Мой гараж")}</Link><Link to="/market?favorites=1">{t("Избранное")}</Link><Link to="/friends">{t("Друзья")}</Link><Link to="/reports">{t("Мои жалобы")}</Link><Link to="/settings">{t("Настройки")}</Link>{(user.role === 'ADMIN' || user.role === 'MODERATOR') && <Link to="/moderation">{t("Модерация")}</Link>}<button onClick={async () => { await signOut(); navigate('/') }}>{t("Выйти")}</button></div>
+        </details> : <Link className="button button-secondary" to="/login">{t("Войти")}</Link>}
       </div>
     </header>
     <main className={pathname === '/login' || pathname === '/register' ? 'page-container road-auth' : 'page-container'} id="main-content" tabIndex={-1}>
-      {inTravel && <nav className="road-travel" aria-label="Поездки и маршруты"><NavLink to="/trips">Поездки</NavLink><NavLink to="/routes">Маршруты</NavLink><NavLink to="/map">Карта и места</NavLink></nav>}
+      {inTravel && <nav className="road-travel" aria-label={t("Поездки и маршруты")}><NavLink to="/trips">{t("Поездки")}</NavLink><NavLink to="/routes">{t("Маршруты")}</NavLink><NavLink to="/map">{t("Карта и места")}</NavLink></nav>}
       <Outlet />
     </main>
     {navigation(true)}

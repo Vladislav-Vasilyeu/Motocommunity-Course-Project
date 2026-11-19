@@ -1,3 +1,4 @@
+import { t, useLocale, getIntlLocale } from '../shared/i18n'
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router'
 import { useAuth } from '../features/auth/AuthProvider'
@@ -11,6 +12,7 @@ const emptyHistory = (key: string, revision = -1): HistoryState => ({ key, revis
 function uniqueMessages(items: DirectMessage[]) { return [...new Map(items.map((item) => [item.id, item])).values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)) }
 
 export default function DialogPage() {
+  useLocale()
   const { userId } = useParams()
   const { user, loading: authLoading } = useAuth()
   const key = `${user?.id ?? ''}:${userId ?? ''}`
@@ -67,15 +69,15 @@ export default function DialogPage() {
   }
 
   if (authLoading) return <LoadingState/>
-  if (!user) return <EmptyState title="Личный диалог" description="Войдите, чтобы прочитать сообщения." action={<Link to="/login" className="button button-primary">Войти</Link>}/>
-  if (!valid) return <EmptyState title="Выберите собеседника" description="Откройте диалог с другим участником сообщества." action={<Link to="/messages" className="button button-primary">К сообщениям</Link>}/>
-  return <div className="messages-feature"><Link className="feature-back" to="/messages">← Все сообщения</Link><PageTitle eyebrow="Личный диалог" title={current.userName || 'Сообщения'} description="Договорённости и разговоры с участником сообщества." action={<button className="button button-secondary" disabled={current.loading || sending || loadingOlder} onClick={() => { setOperationError({ key, message: '' }); setRevision((value) => value + 1) }}>Обновить</button>}/>
+  if (!user) return <EmptyState title={t("Личный диалог")} description={t("Войдите, чтобы прочитать сообщения.")} action={<Link to="/login" className="button button-primary">{t("Войти")}</Link>}/>
+  if (!valid) return <EmptyState title={t("Выберите собеседника")} description={t("Откройте диалог с другим участником сообщества.")} action={<Link to="/messages" className="button button-primary">{t("К сообщениям")}</Link>}/>
+  return <div className="messages-feature"><Link className="feature-back" to="/messages">{t("← Все сообщения")}</Link><PageTitle eyebrow={t("Личный диалог")} title={current.userName || t("Сообщения")} description={t("Договорённости и разговоры с участником сообщества.")} action={<button className="button button-secondary" disabled={current.loading || sending || loadingOlder} onClick={() => { setOperationError({ key, message: '' }); setRevision((value) => value + 1) }}>{t("Обновить")}</button>}/>
     {current.loading ? <LoadingState/> : current.error ? <ErrorState message={current.error} onRetry={() => setRevision((value) => value + 1)}/> : <section className="panel conversation-panel">
-      {current.nextCursor && <button className="button button-secondary older-messages" disabled={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? 'Загружаем…' : 'Загрузить более ранние сообщения'}</button>}
-      {!current.messages.length && <EmptyState title="Начните разговор" description="Первое сообщение появится здесь после отправки."/>}
-      <ol className="conversation-log" aria-label="История сообщений" aria-live="polite" aria-relevant="additions">{current.messages.map((message) => <li key={message.id} className={`message-bubble ${message.senderId === user.id ? 'message-own' : ''}`}><span className="sr-only">{message.senderId === user.id ? 'Вы' : current.userName}: </span><p>{message.content}</p><time dateTime={message.createdAt}>{new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(message.createdAt))}</time></li>)}</ol>
+      {current.nextCursor && <button className="button button-secondary older-messages" disabled={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? t("Загружаем…") : t("Загрузить более ранние сообщения")}</button>}
+      {!current.messages.length && <EmptyState title={t("Начните разговор")} description={t("Первое сообщение появится здесь после отправки.")}/>}
+      <ol className="conversation-log" aria-label={t("История сообщений")} aria-live="polite" aria-relevant="additions">{current.messages.map((message) => <li key={message.id} className={`message-bubble ${message.senderId === user.id ? 'message-own' : ''}`}><span className="sr-only">{message.senderId === user.id ? t("Вы") : current.userName}: </span><p>{message.content}</p><time dateTime={message.createdAt}>{new Intl.DateTimeFormat(getIntlLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(message.createdAt))}</time></li>)}</ol>
       {operationError.key === key && operationError.message && <ErrorState message={operationError.message}/>}
-      <form className="message-form" onSubmit={send}><label htmlFor="message-content">Сообщение</label><textarea id="message-content" maxLength={2000} required value={content} disabled={sending} onChange={(event) => setDraft({ key, content: event.target.value })} placeholder="Напишите участнику…" rows={3}/><div className="feature-actions"><span className="feature-muted">{content.length} / 2 000</span><button className="button button-primary" disabled={sending || !content.trim()}>{sending ? 'Отправляем…' : 'Отправить'}</button></div></form>
+      <form className="message-form" onSubmit={send}><label htmlFor="message-content">{t("Сообщение")}</label><textarea id="message-content" maxLength={2000} required value={content} disabled={sending} onChange={(event) => setDraft({ key, content: event.target.value })} placeholder={t("Напишите участнику…")} rows={3}/><div className="feature-actions"><span className="feature-muted">{content.length} / 2 000</span><button className="button button-primary" disabled={sending || !content.trim()}>{sending ? t("Отправляем…") : t("Отправить")}</button></div></form>
     </section>}
   </div>
 }

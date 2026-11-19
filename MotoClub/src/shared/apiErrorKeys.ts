@@ -1,0 +1,18 @@
+export const apiErrorKeys: Record<string, string> = {
+  UNAUTHORIZED: 'Войдите в аккаунт', FORBIDDEN: 'Недостаточно прав', NOT_FOUND: 'Объект не найден',
+  INVALID_JSON: 'Тело запроса должно быть корректным JSON', INTERNAL_SERVER_ERROR: 'Внутренняя ошибка сервера',
+  INVALID_PROFILE: 'Проверьте длину полей профиля', INVALID_MOTORCYCLE: 'Проверьте марку, модель, год и пробег',
+  INVALID_POST: 'Текст публикации должен содержать от 1 до 2000 символов', COMMUNITY_MEMBERSHIP_REQUIRED: 'Вступите в сообщество, чтобы публиковать записи',
+  INVALID_REQUEST: 'Нельзя добавить себя в друзья', REQUEST_EXISTS: 'Заявка уже отправлена или вы уже друзья', INVALID_STATUS: 'Неизвестный статус запроса',
+  INVALID_COMMUNITY: 'Проверьте название и описание сообщества', OWNER_CANNOT_LEAVE: 'Передайте права владельца перед выходом',
+  INVALID_LISTING: 'Проверьте название, категорию, состояние и цену', INVALID_PLACE: 'Проверьте название, категорию и координаты',
+  INVALID_TRIP: 'Укажите название, дату и минимум две точки маршрута', GOOGLE_UNAVAILABLE: 'Вход через Google недоступен',
+  INVALID_EMAIL: 'Укажите корректный адрес электронной почты', INVALID_PASSWORD: 'Пароль должен содержать от 10 до 128 символов',
+  INVALID_NAME: 'Имя должно содержать от 2 до 60 символов', EMAIL_IN_USE: 'Этот адрес уже зарегистрирован', INVALID_CREDENTIALS: 'Неверный email или пароль',
+  INVALID_DIALOG: 'Выберите другого пользователя', INVALID_CURSOR: 'Некорректная позиция истории', INVALID_MESSAGE: 'Введите от 1 до 2000 символов',
+  INVALID_MAINTENANCE_RECORD: 'Проверьте название, дату, пробег, стоимость и заметки', INVALID_ROUTE: 'Проверьте название, описание и точки маршрута',
+  REPORT_TARGET_NOT_FOUND: 'Объект жалобы не найден', REPORT_SELF: 'Нельзя пожаловаться на себя', REPORT_DUPLICATE: 'Ваша жалоба на этот объект уже ожидает проверки',
+  REPORT_NOT_FOUND: 'Жалоба не найдена', REPORT_ACTION_UNAVAILABLE: 'Удаление аккаунта через жалобу недоступно', REPORT_ALREADY_REVIEWED: 'Жалоба уже обработана',
+  INVALID_REPORT: 'Выберите объект и укажите причину жалобы (5–2000 символов)', INVALID_REPORT_STATUS: 'Неизвестный статус жалобы',
+  INVALID_REPORT_ACTION: 'Выберите действие; комментарий — не более 1000 символов',
+}

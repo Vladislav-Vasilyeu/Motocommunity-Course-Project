@@ -1,62 +1,149 @@
-import { useEffect, useMemo, useState } from 'react'
+import { t, useLocale } from '../shared/i18n'
+import { useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import L from 'leaflet'
-import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet'
-import type { LatLngTuple } from 'leaflet'
-import markerIcon from 'leaflet/dist/images/marker-icon.png'
-import markerRetinaIcon from 'leaflet/dist/images/marker-icon-2x.png'
-import markerShadow from 'leaflet/dist/images/marker-shadow.png'
-import 'leaflet/dist/leaflet.css'
+import GoogleMap from '../features/map/GoogleMap'
+import type { MapMarker, MapPoint } from '../features/map/GoogleMap'
 import type { CommunityRoute, Place, Trip } from '../shared/types'
 import { EmptyState, ErrorState, LoadingState, PageTitle } from '../shared/ui'
 import { usePageResource } from './usePageResource'
 import './routes-messages.css'
 
-L.Icon.Default.mergeOptions({ iconUrl: markerIcon, iconRetinaUrl: markerRetinaIcon, shadowUrl: markerShadow })
-const isCoordinate = (lat: number, lng: number) => Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
+function coordinates(latitude: string | number, longitude: string | number): MapPoint | null {
+  if (String(latitude).trim() === '' || String(longitude).trim() === '') return null
+  const lat = Number(latitude)
+  const lng = Number(longitude)
+  return Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null
+}
 
-function MapFocus({ points, selected }: { points: LatLngTuple[]; selected: LatLngTuple | null }) {
-  const map = useMap()
-  useEffect(() => {
-    if (selected) map.setView(selected, 14)
-    else if (points.length === 1) map.setView(points[0], 12)
-    else if (points.length > 1) map.fitBounds(points, { padding: [32, 32], maxZoom: 14 })
-    else map.setView([53.9, 27.56], 7)
-  }, [map, points, selected])
-  return null
+type Waypoint = {
+  id: string
+  title: string
+  detail?: string
+  coordinates: MapPoint | null
 }
 
 export default function MapPage() {
+  const { locale } = useLocale()
   const [params] = useSearchParams()
   const routeId = params.get('route')
   const tripId = params.get('trip')
   const [category, setCategory] = useState('')
   const [query, setQuery] = useState('')
-  const selectionScope = `${routeId ?? ''}:${tripId ?? ''}`
-  const [selection, setSelection] = useState<{ scope: string; id: string | null }>({ scope: '', id: null })
-  const selectedPlace = selection.scope === selectionScope ? selection.id : null
-  const setSelectedPlace = (id: string | null) => setSelection({ scope: selectionScope, id })
+  const [mapAvailable, setMapAvailable] = useState(false)
+  const mapSection = useRef<HTMLElement>(null)
+  const selectionScope = JSON.stringify([routeId, tripId])
+  const [selection, setSelection] = useState<{ scope: string; id: string } | null>(null)
+  const selectedPlace = selection?.scope === selectionScope ? selection.id : null
+
   const places = usePageResource<{ places: Place[] }>('/api/places')
   const trips = usePageResource<{ trips: Trip[] }>(routeId || tripId ? null : '/api/trips')
   const tripDetail = usePageResource<{ trip: Trip }>(tripId && !routeId ? `/api/trips/${encodeURIComponent(tripId)}` : null)
   const route = usePageResource<{ route: CommunityRoute }>(routeId ? `/api/routes/${encodeURIComponent(routeId)}` : null)
   const selectedTrip = tripDetail.data?.trip
-  const categories = useMemo(() => [...new Set(places.data?.places.map((place) => place.category) ?? [])].sort(), [places.data])
-  const visiblePlaces = useMemo(() => (places.data?.places ?? []).filter((place) => (!category || place.category === category) && `${place.name} ${place.city} ${place.description ?? ''}`.toLocaleLowerCase('ru').includes(query.trim().toLocaleLowerCase('ru'))), [places.data, category, query])
-  const placePoints = useMemo(() => visiblePlaces.map((place) => ({ place, lat: Number(place.latitude), lng: Number(place.longitude) })).filter((point) => isCoordinate(point.lat, point.lng)), [visiblePlaces])
-  const tripPoints = useMemo(() => (routeId ? [] : tripId ? selectedTrip ? [selectedTrip] : [] : trips.data?.trips ?? []).flatMap((trip) => trip.waypoints.map((point) => ({ id: `${trip.id}-${point.id}`, title: point.label || trip.title, detail: trip.title, lat: Number(point.latitude), lng: Number(point.longitude) }))).filter((point) => isCoordinate(point.lat, point.lng)), [routeId, tripId, selectedTrip, trips.data])
-  const routePoints = useMemo(() => (route.data?.route.waypoints ?? []).map((point) => ({ id: point.id, title: point.title, lat: Number(point.latitude), lng: Number(point.longitude) })).filter((point) => isCoordinate(point.lat, point.lng)), [route.data])
-  const focusPoints = useMemo<LatLngTuple[]>(() => (routeId ? routePoints : tripId ? tripPoints : [...placePoints, ...tripPoints]).map((point) => [point.lat, point.lng]), [routeId, tripId, routePoints, tripPoints, placePoints])
-  const selected = useMemo<LatLngTuple | null>(() => { const point = placePoints.find((item) => item.place.id === selectedPlace); return point ? [point.lat, point.lng] : null }, [placePoints, selectedPlace])
-  const loading = places.loading || trips.loading || route.loading || tripDetail.loading
-  const title = route.data?.route.title || selectedTrip?.title
-  const line = routeId ? routePoints : tripId ? tripPoints : []
+  const selectedRoute = route.data?.route
 
-  return <div className="route-feature"><PageTitle eyebrow="Карта сообщества" title="Карта и места" description="Маршруты, точки поездок и полезные остановки. Все места доступны также списком." action={<Link className="button button-secondary" to="/routes">Каталог маршрутов</Link>}/>
-    <div className="panel map-feature-controls"><label>Поиск места<input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setSelectedPlace(null) }} placeholder="Название, город или описание"/></label><label>Категория<select value={category} onChange={(event) => { setCategory(event.target.value); setSelectedPlace(null) }}><option value="">Все места</option>{categories.map((value) => <option key={value} value={value}>{value}</option>)}</select></label></div>
-    {title && <div className="panel map-route-notice"><strong>{routeId ? 'Маршрут' : 'Поездка'} · {title}</strong><p className="feature-muted">Лаймовая линия соединяет точки по порядку, а не показывает автомобильный маршрут по дорогам.</p><Link to={routeId ? `/routes/${routeId}` : '/trips'}>Вернуться к {routeId ? 'маршруту' : 'поездкам'}</Link></div>}
-    {places.error && <ErrorState message={places.error} onRetry={places.reload}/ >}{trips.error && <ErrorState message={trips.error} onRetry={trips.reload}/ >}{route.error && <ErrorState message={route.error} onRetry={route.reload}/ >}{tripDetail.error && <ErrorState message={tripDetail.error} onRetry={tripDetail.reload}/ >}
-    {!loading && tripId && !routeId && !selectedTrip && !tripDetail.error && <ErrorState message="Выбранная поездка не найдена. Возможно, она была удалена."/>}
-    {loading ? <LoadingState/> : <div className="map-feature-grid"><div className="map-panel panel"><MapContainer center={[53.9, 27.56]} zoom={7} scrollWheelZoom={false} className="leaflet-map"><TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/><MapFocus points={focusPoints} selected={selected}/>{placePoints.map(({ place, lat, lng }) => <Marker key={`place-${place.id}`} position={[lat, lng]}><Popup><strong>{place.name}</strong><br/>{place.category} · {place.city}{place.description && <p>{place.description}</p>}</Popup></Marker>)}{tripPoints.map((point) => <Marker key={`trip-${point.id}`} position={[point.lat, point.lng]}><Popup><strong>{point.title}</strong><br/>{point.detail}</Popup></Marker>)}{routePoints.map((point, index) => <Marker key={`route-${point.id}`} position={[point.lat, point.lng]}><Popup><strong>{index + 1}. {point.title}</strong></Popup></Marker>)}{line.length > 1 && <Polyline positions={line.map((point) => [point.lat, point.lng])} pathOptions={{ color: '#CCFA4B', weight: 5 }}/> }</MapContainer><div className="map-caption">{placePoints.length} мест · {routePoints.length + tripPoints.length} точек поездок и маршрутов</div></div><section className="panel"><h2 className="map-list-title">Полезные места</h2>{!visiblePlaces.length ? <EmptyState title="Нет подходящих мест" description="Измените запрос или выберите другую категорию."/> : <ul className="map-places-list">{visiblePlaces.map((place) => { const coordinatesValid = isCoordinate(Number(place.latitude), Number(place.longitude)); return <li key={place.id} className={`map-place-card ${selectedPlace === place.id ? 'is-selected' : ''}`}><button type="button" disabled={!coordinatesValid} aria-pressed={selectedPlace === place.id} onClick={() => setSelectedPlace(place.id)}><strong className="map-place-name">{place.name}</strong><span className="feature-muted">{place.category} · {place.city}</span></button>{place.description && <p>{place.description}</p>}<small className="feature-muted">{coordinatesValid ? `${Number(place.latitude).toFixed(5)}, ${Number(place.longitude).toFixed(5)}` : 'Координаты недоступны'}</small></li> })}</ul>}</section></div>}
+  const categories = useMemo(() => [...new Set(places.data?.places.map((place) => place.category))].sort(), [places.data])
+  const visiblePlaces = useMemo(() => {
+    const search = query.trim().toLocaleLowerCase('ru')
+    return (places.data?.places ?? [])
+      .filter((place) => (!category || place.category === category) && `${place.name} ${place.city} ${place.description ?? ''}`.toLocaleLowerCase('ru').includes(search))
+      .map((place) => ({ place, coordinates: coordinates(place.latitude, place.longitude) }))
+  }, [places.data, category, query])
+
+  const waypoints = useMemo<Waypoint[]>(() => {
+    if (routeId) {
+      return (selectedRoute?.waypoints ?? []).map((point) => ({
+        id: `route-${point.id}`, title: point.title, coordinates: coordinates(point.latitude, point.longitude),
+      }))
+    }
+    const visibleTrips = tripId ? selectedTrip ? [selectedTrip] : [] : trips.data?.trips ?? []
+    return visibleTrips.flatMap((trip) => trip.waypoints.map((point) => ({
+      id: `trip-${trip.id}-${point.id}`, title: point.label || trip.title, detail: trip.title,
+      coordinates: coordinates(point.latitude, point.longitude),
+    })))
+  }, [routeId, tripId, selectedRoute, selectedTrip, trips.data])
+  const hasSelectedPath = Boolean(routeId || tripId)
+  const waypointMarkers = useMemo<MapMarker[]>(() => waypoints.flatMap((point, index) => point.coordinates ? [{
+    ...point.coordinates, id: point.id, title: point.title, detail: point.detail, order: hasSelectedPath ? index + 1 : undefined,
+  }] : []), [waypoints, hasSelectedPath])
+  const placeMarkers = useMemo<MapMarker[]>(() => visiblePlaces.flatMap(({ place, coordinates: location }) => location ? [{
+    ...location, id: `place-${place.id}`, title: place.name, detail: `${t(place.category)} · ${place.city}`, description: place.description,
+  }] : []), [visiblePlaces, locale])
+  const markers = useMemo(() => [...placeMarkers, ...waypointMarkers], [placeMarkers, waypointMarkers])
+  const line = useMemo(() => hasSelectedPath ? waypointMarkers : [], [hasSelectedPath, waypointMarkers])
+  const focus = hasSelectedPath ? waypointMarkers : markers
+  const title = selectedRoute?.title || selectedTrip?.title
+
+  return <div className="route-feature">
+    <PageTitle eyebrow={t("Карта сообщества")} title={t("Карта и места")} description={t("Маршруты, точки поездок и полезные остановки.")}
+      action={<Link className="button button-secondary" to="/routes">{t("Каталог маршрутов")}</Link>}/>
+    {places.error && <ErrorState message={places.error} onRetry={places.reload}/>}
+    {trips.error && <ErrorState message={trips.error} onRetry={trips.reload}/>}
+    {route.error && <ErrorState message={route.error} onRetry={route.reload}/>}
+    {tripDetail.error && <ErrorState message={tripDetail.error} onRetry={tripDetail.reload}/>}
+    {tripId && !routeId && !tripDetail.loading && !selectedTrip && !tripDetail.error &&
+      <ErrorState message={t("Выбранная поездка не найдена. Возможно, она была удалена.")}/>}
+
+    <section className="panel map-workspace" aria-label={t("Карта и фильтры")} ref={mapSection} tabIndex={-1}>
+      <div className="map-feature-controls">
+        <label>{t("Поиск места")}{' '}<input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setSelection(null) }}
+            placeholder={t("Название, город или описание")}/>
+        </label>
+        <label>{t("Категория")}{' '}<select value={category} onChange={(event) => { setCategory(event.target.value); setSelection(null) }}>
+            <option value="">{t("Все места")}</option>
+            {categories.map((value) => <option key={value} value={value}>{t(value)}</option>)}
+          </select>
+        </label>
+        <a href="#map-places" className="button button-secondary">{t("Список мест")}</a>
+      </div>
+      <GoogleMap markers={markers} line={line} focus={focus}
+        selectedId={selectedPlace ? `place-${selectedPlace}` : null} onAvailabilityChange={setMapAvailable}/>
+      {(trips.loading || route.loading || tripDetail.loading) && <p className="feature-muted" role="status">{t("Загружаю точки поездок и маршрутов…")}</p>}
+      {title && <div className="map-route-summary">
+        <h2>{title}</h2>
+        {line.length > 1 && <p className="feature-muted">{t("Линия соединяет остановки по порядку. Навигация по дорогам недоступна.")}</p>}
+        <Link className="button button-secondary" to={routeId ? `/routes/${encodeURIComponent(routeId)}` : '/trips'}>
+          {' '}{t("Вернуться к")}{' '}{routeId ? t("маршруту") : t("поездкам")}
+        </Link>
+      </div>}
+    </section>
+
+    {title && waypoints.length > 0 && <section className="panel map-detail-list" aria-labelledby="map-waypoints-title">
+      <h2 id="map-waypoints-title" className="map-list-title">{t("Остановки")}</h2>
+      <ol className="map-waypoint-list">
+        {waypoints.map((point) => <li key={point.id}>
+          <strong>{point.title}</strong>
+          <span className="feature-muted">{point.coordinates ? `${point.coordinates.lat.toFixed(5)}, ${point.coordinates.lng.toFixed(5)}` : t("Координаты недоступны")}</span>
+        </li>)}
+      </ol>
+    </section>}
+
+    <section className="panel map-detail-list" aria-labelledby="map-places-title" id="map-places" tabIndex={-1}>
+      <h2 id="map-places-title" className="map-list-title">{t("Полезные места")}</h2>
+      {places.loading && <LoadingState/>}
+      {places.data && (visiblePlaces.length === 0
+        ? <EmptyState title={t("Нет подходящих мест")} description={t("Измените запрос или выберите другую категорию.")}/>
+        : <ul className="map-places-list">
+          {visiblePlaces.map(({ place, coordinates: location }) => {
+            const isSelected = mapAvailable && selectedPlace === place.id
+            return <li key={place.id} className={`map-place-card ${isSelected ? 'is-selected' : ''}`}>
+              <div>
+                <h3>{place.name}</h3>
+                <span className="feature-muted">{t(place.category)} · {place.city}</span>
+                {place.description && <p>{place.description}</p>}
+                <small className="feature-muted">{location ? `${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}` : t("Координаты недоступны")}</small>
+              </div>
+              {location && mapAvailable && <button type="button" className="button button-secondary"
+                aria-label={t("Показать на карте: {p0}", { p0: place.name })} aria-pressed={isSelected}
+                onClick={() => {
+                  setSelection({ scope: selectionScope, id: place.id })
+                  mapSection.current?.focus({ preventScroll: true })
+                  mapSection.current?.scrollIntoView({ block: 'start' })
+                }}>
+                {' '}{t("На карте")}{' '}</button>}
+            </li>
+          })}
+        </ul>)}
+    </section>
   </div>
 }
