@@ -51,6 +51,12 @@ Frontend отвечает за маршруты, страницы, формы и
 - **Вход.** Настройте экран согласия и создайте OAuth-клиент типа Web application. Добавьте точный redirect URI `http://localhost:3000/api/auth/google/callback`. Укажите `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` и `CLIENT_ORIGIN` в `.env`, затем перезапустите API. Для рабочего окружения frontend и API должны быть на одном сайте (например, поддоменах одного домена), чтобы работала сессионная cookie. Если OAuth-приложение в режиме тестирования, добавьте аккаунт в тестовые пользователи. `GOOGLE_CLIENT_SECRET` доступен только серверу.
 - Перед запуском обновлённого API выполните `npm --prefix server run db:deploy` и `npm --prefix server run db:generate`. Миграция также исправляет две конкретные испорченные демонстрационные строки, сохраняя пользовательские правки.
 
+Если email уже зарегистрирован с паролем, сначала войдите с паролем, откройте «Настройки → Вход через Google» и нажмите «Подключить Google». Выберите Google с тем же email, который указан в профиле MotoClub. После подключения можно выходить и входить через Google в тот же профиль. После сообщения `email_in_use` успешный вход с паролем сам открывает нужный раздел настроек. Автоматической привязки по совпадению email нет; callback проверяет исходную сессию и пользователя, совпадение email и уникальность Google subject. Замена уже подключённого Google через этот сценарий запрещена.
+
+`GET /api/auth/google` возвращает `{ enabled, linked }`, явная привязка начинается через `/api/auth/google/start?mode=link`. Проверка backend: `npm --prefix server run build`, затем `node server/scripts/check-google-link.mjs`. По умолчанию проверяются HTTP-отказы без базы; для проверки сохранения задайте `DATABASE_URL` отдельной базы со всеми миграциями и `GOOGLE_LINK_ALLOW_WRITES=1`. Скрипт использует синтетический ответ Google, временные аккаунты и удаляет созданные записи в `finally`; настоящий вход в личный Google-аккаунт в эту проверку не входит.
+
+Кнопка использует прозрачный SVG из [официального примера Google](https://developers.google.com/static/identity/images/branding_guideline_sample_nt_sq_sl.svg) и нейтральную схему из [правил оформления Google](https://developers.google.com/identity/branding-guidelines).
+
 ## Реализованные HTTP-маршруты
 
 - `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`.

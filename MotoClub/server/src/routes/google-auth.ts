@@ -2,11 +2,14 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { Router } from "express";
 import { CodeChallengeMethod } from "google-auth-library";
 import { cookieValue, createSessionToken, sessionCookieOptions } from "../lib/auth.js";
+import { optionalAuth } from "../middleware/auth.js";
 import {
   findOrCreateGoogleUser,
   googleAuthClient,
   googleCallbackPath,
+  googleIsLinked,
   isWebUrl,
+  linkGoogleUser,
   verifyGoogleIdentity,
 } from "../services/google-auth.service.js";
 
@@ -23,6 +26,7 @@ function clientOrigin() {
 }
 
 function authPage(mode: unknown) {
+  if (mode === "link") return "/settings";
   return mode === "register" ? "/register" : "/login";
 }
 
@@ -38,13 +42,14 @@ function stateMatches(state: unknown, expected: string) {
     timingSafeEqual(Buffer.from(state), Buffer.from(expected));
 }
 
-googleAuthRouter.use("/api/auth/google", (_request, response, next) => {
+googleAuthRouter.use("/api/auth/google", optionalAuth, (_request, response, next) => {
   response.set({ "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" });
   next();
 });
 
-googleAuthRouter.get("/api/auth/google", (_request, response) => {
-  response.json({ enabled: Boolean(googleAuthClient() && clientOrigin()) });
+googleAuthRouter.get("/api/auth/google", async (request, response) => {
+  const linked = request.userId ? await googleIsLinked(request.userId) : false;
+  response.json({ enabled: Boolean(googleAuthClient() && clientOrigin()), linked });
 });
 
 googleAuthRouter.get("/api/auth/google/start", (request, response) => {
@@ -55,13 +60,21 @@ googleAuthRouter.get("/api/auth/google/start", (request, response) => {
     return;
   }
 
+  const mode = request.query.mode === "link" ? "link" : request.query.mode === "register" ? "register" : "login";
+  if (mode === "link" && !request.userId) {
+    response.redirect(new URL("/settings?googleError=session_changed", origin).href);
+    return;
+  }
+
   const state = randomToken();
   const nonce = randomToken();
   const codeVerifier = randomToken();
   const codeChallenge = createHash("sha256").update(codeVerifier).digest("base64url");
-  const mode = request.query.mode === "register" ? "register" : "login";
   const cookie = flowCookie(google.secure);
-  response.cookie(cookie.name, [state, nonce, codeVerifier, mode, Date.now()].join("."), {
+  const initiator = mode === "link" ? Buffer.from(request.userId!).toString("base64url") : "";
+  const session = cookieValue(request.headers.cookie, "motoclub_session");
+  const sessionDigest = mode === "link" && session ? createHash("sha256").update(session).digest("base64url") : "";
+  response.cookie(cookie.name, [state, nonce, codeVerifier, mode, Date.now(), initiator, sessionDigest].join("."), {
     ...cookie.options,
     maxAge: flowLifetimeMs,
   });
@@ -87,7 +100,7 @@ googleAuthRouter.get(googleCallbackPath, async (request, response, next) => {
 
   const cookie = flowCookie(google.secure);
   const flow = cookieValue(request.headers.cookie, cookie.name);
-  const [state = "", nonce = "", codeVerifier = "", mode, startedAt] = flow?.split(".") ?? [];
+  const [state = "", nonce = "", codeVerifier = "", mode, startedAt, initiator, sessionDigest = ""] = flow?.split(".") ?? [];
   const authUrl = new URL(authPage(mode), origin);
   function redirectWithError(code: string) {
     authUrl.searchParams.set("googleError", code);
@@ -101,6 +114,16 @@ googleAuthRouter.get(googleCallbackPath, async (request, response, next) => {
     return;
   }
   response.clearCookie(cookie.name, cookie.options);
+
+  if (mode === "link") {
+    const session = cookieValue(request.headers.cookie, "motoclub_session");
+    const currentDigest = session ? createHash("sha256").update(session).digest("base64url") : "";
+    if (!request.userId || Buffer.from(request.userId).toString("base64url") !== initiator ||
+        !stateMatches(currentDigest, sessionDigest)) {
+      redirectWithError("session_changed");
+      return;
+    }
+  }
 
   if (request.query.error === "access_denied") {
     redirectWithError("cancelled");
@@ -119,6 +142,12 @@ googleAuthRouter.get(googleCallbackPath, async (request, response, next) => {
   }
 
   try {
+    if (mode === "link") {
+      const error = await linkGoogleUser(request.userId!, identity);
+      if (error) redirectWithError(error);
+      else response.redirect(new URL("/settings?googleLinked=1", origin).href);
+      return;
+    }
     const user = await findOrCreateGoogleUser(identity);
     if (!user) {
       redirectWithError("email_in_use");
@@ -127,6 +156,10 @@ googleAuthRouter.get(googleCallbackPath, async (request, response, next) => {
     response.cookie("motoclub_session", createSessionToken(user.id, user.role), sessionCookieOptions());
     response.redirect(new URL("/", origin).href);
   } catch (error) {
+    if (mode === "link") {
+      redirectWithError("failed");
+      return;
+    }
     next(error);
   }
 });

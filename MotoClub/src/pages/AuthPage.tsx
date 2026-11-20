@@ -1,7 +1,7 @@
 import { t, useLocale } from '../shared/i18n'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
-import googleLogo from '../assets/google-g.png'
+import googleLogo from '../assets/google-g.svg'
 import { useAuth } from '../features/auth/AuthProvider'
 import { API_URL, api, getErrorMessage } from '../shared/api'
 import { formObject } from '../shared/types'
@@ -15,7 +15,7 @@ function getGoogleError(code: string | null) {
     case 'expired':
       return t("Срок действия запроса истёк. Начните вход через Google заново.")
     case 'email_in_use':
-      return t("Этот email уже зарегистрирован в MotoClub. Войдите с паролем или выберите другой аккаунт Google.")
+      return t("Этот email уже зарегистрирован. Войдите с паролем, затем подключите Google в настройках. После этого вы сможете входить через Google.")
     case 'failed':
       return t("Не удалось войти через Google. Попробуйте снова.")
     default:
@@ -33,6 +33,7 @@ export default function AuthPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [googleEnabled, setGoogleEnabled] = useState(false)
+  const pendingGoogleLink = useRef(false)
   const googleError = getGoogleError(searchParams.get('googleError'))
 
   useEffect(() => {
@@ -47,6 +48,7 @@ export default function AuthPage() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const data = formObject(event.currentTarget)
+    pendingGoogleLink.current ||= !isRegister && searchParams.get('googleError') === 'email_in_use'
     setBusy(true)
     setError('')
     if (searchParams.has('googleError')) {
@@ -57,7 +59,7 @@ export default function AuthPage() {
     try {
       if (isRegister) await signUp(String(data.displayName), String(data.email), String(data.password))
       else await signIn(String(data.email), String(data.password))
-      navigate('/')
+      navigate(pendingGoogleLink.current ? '/settings?connectGoogle=1' : '/')
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -96,7 +98,7 @@ export default function AuthPage() {
         )}
         <p>
           {isRegister ? t("Уже зарегистрированы?") : t("Впервые в MotoClub?")}{' '}
-          <Link to={isRegister ? '/login' : '/register'}>{isRegister ? t("Войти") : t("Создать аккаунт")}</Link>
+          <Link to={isRegister ? `/login${searchParams.get('googleError') === 'email_in_use' ? '?googleError=email_in_use' : ''}` : '/register'}>{isRegister ? t("Войти") : t("Создать аккаунт")}</Link>
         </p>
       </form>
     </>

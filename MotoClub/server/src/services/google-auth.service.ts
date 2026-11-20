@@ -4,6 +4,43 @@ import { Prisma } from "../generated/prisma/client.js";
 
 export const googleCallbackPath = "/api/auth/google/callback";
 const userSelect = { id: true, role: true } as const;
+type GoogleIdentity = NonNullable<Awaited<ReturnType<typeof verifyGoogleIdentity>>>;
+
+export async function googleIsLinked(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { googleSubject: true } });
+  return Boolean(user?.googleSubject);
+}
+
+export type GoogleLinkError = "session_changed" | "email_mismatch" | "already_linked" | "identity_in_use";
+
+export async function linkGoogleUser(userId: string, identity: GoogleIdentity): Promise<GoogleLinkError | null> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId }, select: { email: true, googleSubject: true },
+  });
+  if (!user) return "session_changed";
+  if (user.email.trim().toLowerCase() !== identity.email) return "email_mismatch";
+  if (user.googleSubject) return user.googleSubject === identity.subject ? null : "already_linked";
+
+  try {
+    // The predicate prevents overwriting a concurrent link or a changed email.
+    // The unique googleSubject constraint also arbitrates concurrent owners.
+    const result = await prisma.user.updateMany({
+      where: { id: userId, email: user.email, googleSubject: null },
+      data: { googleSubject: identity.subject },
+    });
+    if (result.count === 1) return null;
+  } catch (error) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
+    return "identity_in_use";
+  }
+
+  const current = await prisma.user.findUnique({
+    where: { id: userId }, select: { email: true, googleSubject: true },
+  });
+  if (!current) return "session_changed";
+  if (current.email.trim().toLowerCase() !== identity.email) return "email_mismatch";
+  return current.googleSubject === identity.subject ? null : "already_linked";
+}
 
 export function googleAuthClient() {
   const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI } = process.env;
@@ -48,7 +85,7 @@ export async function verifyGoogleIdentity(
   return { subject: claims.sub, email, displayName };
 }
 
-export async function findOrCreateGoogleUser(identity: NonNullable<Awaited<ReturnType<typeof verifyGoogleIdentity>>>) {
+export async function findOrCreateGoogleUser(identity: GoogleIdentity) {
   const where = { googleSubject: identity.subject };
   const existing = await prisma.user.findUnique({ where, select: userSelect });
   if (existing) return existing;
