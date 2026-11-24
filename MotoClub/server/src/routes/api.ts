@@ -62,7 +62,7 @@ apiRouter.patch("/api/profile", requireAuth, async (request, response, next) => 
     const user = await prisma.user.update({
       where: { id: request.userId },
       data: { displayName, profile: { upsert: { create: { bio, city, ridingStyle }, update: { bio, city, ridingStyle } } } },
-      select: { id: true, displayName: true, email: true, profile: true },
+      select: { id: true, displayName: true, email: true, role: true, profile: true },
     });
     response.json({ user });
   } catch (error) { next(error); }
@@ -212,7 +212,10 @@ apiRouter.post("/api/communities", requireAuth, async (request, response, next) 
 apiRouter.post("/api/communities/:id/join", requireAuth, async (request, response, next) => {
   try {
     const communityId = routeParam(request.params.id);
-    await prisma.communityMember.upsert({ where: { communityId_userId: { communityId, userId: request.userId! } }, create: { communityId, userId: request.userId! }, update: {} });
+    if (!await prisma.community.findUnique({ where: { id: communityId }, select: { id: true } })) {
+      response.status(404).json({ error: { code: "NOT_FOUND", message: "Сообщество не найдено" } }); return;
+    }
+    await prisma.communityMember.createMany({ data: { communityId, userId: request.userId! }, skipDuplicates: true });
     response.status(204).end();
   } catch (error) { next(error); }
 });
@@ -316,9 +319,16 @@ apiRouter.get("/api/trips", optionalAuth, async (request, response, next) => {
 
 apiRouter.post("/api/trips", requireAuth, async (request, response, next) => {
   try {
-    const title = text(request.body?.title); const description = text(request.body?.description); const startsAt = new Date(request.body?.startsAt);
-    const waypoints = Array.isArray(request.body?.waypoints) ? request.body.waypoints : [];
-    if (title.length < 4 || title.length > 120 || description.length > 2000 || Number.isNaN(startsAt.valueOf()) || waypoints.length < 2 || waypoints.length > 30 || waypoints.some((p: { latitude?: unknown; longitude?: unknown }) => !Number.isFinite(Number(p.latitude)) || !Number.isFinite(Number(p.longitude)) || Number(p.latitude) < -90 || Number(p.latitude) > 90 || Number(p.longitude) < -180 || Number(p.longitude) > 180)) {
+    const title = text(request.body?.title); const description = text(request.body?.description); const startsAt = new Date(text(request.body?.startsAt));
+    const rawPoints: unknown[] = Array.isArray(request.body?.waypoints) ? request.body.waypoints : [];
+    const waypoints = rawPoints.flatMap((point) => {
+      if (!point || typeof point !== "object" || Array.isArray(point)) return [];
+      const value = point as Record<string, unknown>;
+      const latitude = parseCoordinate(value.latitude, 90);
+      const longitude = parseCoordinate(value.longitude, 180);
+      return latitude === null || longitude === null ? [] : [{ latitude, longitude, label: text(value.label).slice(0, 100) }];
+    });
+    if (title.length < 4 || title.length > 120 || description.length > 2000 || Number.isNaN(startsAt.valueOf()) || waypoints.length < 2 || rawPoints.length > 30 || waypoints.length !== rawPoints.length) {
       response.status(400).json({ error: { code: "INVALID_TRIP", message: "Укажите название, дату и минимум две точки маршрута" } }); return;
     }
     const trip = await prisma.trip.create({ data: { organizerId: request.userId!, title, description, startsAt, waypoints: { create: waypoints.map((p: { latitude: number; longitude: number; label?: string }, i: number) => ({ sequence: i + 1, latitude: p.latitude, longitude: p.longitude, label: text(p.label).slice(0, 100) })) } }, include: { organizer: { select: { id: true, displayName: true } }, waypoints: { orderBy: { sequence: "asc" } }, _count: { select: { participants: true } } } });
@@ -330,7 +340,7 @@ apiRouter.post("/api/trips/:id/join", requireAuth, async (request, response, nex
   try {
     const tripId = routeParam(request.params.id);
     if (!await prisma.trip.findFirst({ where: { id: tripId, status: "PLANNED" } })) { response.status(404).json({ error: { code: "NOT_FOUND", message: "Поездка не найдена" } }); return; }
-    await prisma.tripParticipant.upsert({ where: { tripId_userId: { tripId, userId: request.userId! } }, create: { tripId, userId: request.userId! }, update: {} });
+    await prisma.tripParticipant.createMany({ data: { tripId, userId: request.userId! }, skipDuplicates: true });
     response.status(204).end();
   } catch (error) { next(error); }
 });

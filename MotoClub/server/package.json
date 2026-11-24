@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "test:qa": "node scripts/qa/run.mjs",
     "dev": "tsx watch src/index.ts",
     "predev": "npm run db:generate",
     "build": "npm run db:generate && tsc -p tsconfig.json",

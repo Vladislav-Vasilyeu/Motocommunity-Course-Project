@@ -1,4 +1,5 @@
 export const apiErrorKeys: Record<string, string> = {
+  PAYLOAD_TOO_LARGE: 'Размер запроса превышает допустимый лимит',
   UNAUTHORIZED: 'Войдите в аккаунт', FORBIDDEN: 'Недостаточно прав', NOT_FOUND: 'Объект не найден',
   INVALID_JSON: 'Тело запроса должно быть корректным JSON', INTERNAL_SERVER_ERROR: 'Внутренняя ошибка сервера',
   INVALID_PROFILE: 'Проверьте длину полей профиля', INVALID_MOTORCYCLE: 'Проверьте марку, модель, год и пробег',
