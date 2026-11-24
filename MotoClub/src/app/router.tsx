@@ -1,7 +1,11 @@
 import { lazy, Suspense } from 'react'
-import { createBrowserRouter } from 'react-router'
+import { createBrowserRouter, Link } from 'react-router'
 import AppLayout from './AppLayout'
+import { useLocale } from '../shared/i18n'
 
+const SettingsPage = lazy(() => import('../pages/SettingsPage'))
+const ReportsPage = lazy(() => import('../pages/ReportsPage'))
+const ModerationPage = lazy(() => import('../pages/ModerationPage'))
 const NotificationsPage = lazy(() => import('../pages/NotificationsPage'))
 const MaintenancePage = lazy(() => import('../pages/MaintenancePage'))
 const FeedPage = lazy(() => import('../pages/FeedPage'))
@@ -19,11 +23,19 @@ const FriendsPage = lazy(() => import('../pages/FriendsPage'))
 const ProfilePage = lazy(() => import('../pages/ProfilePage'))
 const AuthPage = lazy(() => import('../pages/AuthPage'))
 
-function PageLoader() { return <div className="loading-block" role="status">Загружаю страницу…</div> }
+function PageLoader() { const { t } = useLocale(); return <div className="loading-block" role="status">{t("Загружаю страницу…")}</div> }
 function wrap(Page: React.LazyExoticComponent<() => React.JSX.Element>) { return <Suspense fallback={<PageLoader />}><Page /></Suspense> }
+
+function NotFoundPage() {
+  const { t } = useLocale()
+  return <section className="state-panel state-empty"><h1>404</h1><p>{t("Страница не найдена")}</p><Link className="button button-primary" to="/">{t("Вернуться в ленту")}</Link></section>
+}
 
 export const router = createBrowserRouter([
   { element: <AppLayout />, children: [
+    { path: '/settings', element: wrap(SettingsPage) },
+    { path: '/reports', element: wrap(ReportsPage) },
+    { path: '/moderation', element: wrap(ModerationPage) },
     { path: '/', element: wrap(FeedPage) },
     { path: '/trips', element: wrap(TripsPage) },
     { path: '/communities', element: wrap(CommunitiesPage) },
@@ -43,5 +55,6 @@ export const router = createBrowserRouter([
     { path: '/profile', element: wrap(ProfilePage) },
     { path: '/login', element: wrap(AuthPage) },
     { path: '/register', element: wrap(AuthPage) },
+    { path: '*', element: <NotFoundPage/> },
   ] },
 ])

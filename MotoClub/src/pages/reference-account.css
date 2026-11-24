@@ -1,0 +1,88 @@
+/* Account layouts follow the reference composition and the app's theme tokens. */
+.mc-account-page { min-width: 0; }
+.mc-account-page :is(.button, summary), .mc-auth-card .button { min-height: 44px; }
+.mc-account-page :is(h2, strong, p), .mc-auth-card { overflow-wrap: anywhere; }
+.mc-account-page .page-title h1 { font-size: 28px; }
+.mc-profile-summary { padding: 0; overflow: hidden; margin-bottom: 24px; }
+.mc-profile-cover { height: 135px; background: radial-gradient(ellipse at 70% 25%, color-mix(in srgb, var(--accent-fill) 23%, transparent), transparent), linear-gradient(110deg, var(--surface-inverse), #172c2c); }
+.mc-profile-identity { padding: 0 28px 28px; }
+.mc-profile-identity .mc-profile-avatar { position: relative; width: 90px; height: 90px; margin-top: -45px; border: 5px solid var(--surface); font-size: 28px; background: var(--surface-raised); }
+.mc-profile-identity h2 { margin: 15px 0 8px; font-size: 26px; }
+.mc-profile-identity .muted { font-size: 14px; }
+.mc-profile-bio { white-space: pre-wrap; line-height: 1.7; }
+.mc-account-links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.mc-profile-page .mc-profile-editor { max-width: none; padding: 28px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.mc-profile-editor h2 { margin: 0; font-size: 20px; grid-column: 1 / -1; }
+.mc-profile-editor label:has(textarea), .mc-profile-editor .form-buttons { grid-column: 1 / -1; }
+.mc-profile-editor input, .mc-profile-editor textarea { width: 100%; min-width: 0; }
+.mc-garage-page .mc-vehicle-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.mc-garage-page .mc-vehicle-card { display: block; padding: 0; overflow: hidden; min-width: 0; }
+.mc-vehicle-art { height: 190px; display: grid; place-items: center; background: radial-gradient(ellipse at 45% 100%, color-mix(in srgb, var(--accent-fill) 12%, transparent), transparent), var(--surface-raised); color: var(--text-muted); }
+.mc-vehicle-copy { padding: 22px; }
+.mc-vehicle-copy h2 { font-size: 20px; margin: 14px 0 12px; }
+.mc-vehicle-copy .card-actions { gap: 8px; display: flex; flex-wrap: wrap; }
+.mc-vehicle-copy .card-actions > a { flex-basis: 100%; }
+.mc-connections-page .mc-people-list { display: block; border: 1px solid var(--border); border-radius: 12px; padding: 0 24px; background: var(--surface); }
+.mc-connections-page .person-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 14px; border: 0; border-radius: 0; padding: 18px 0; box-shadow: none; min-width: 0; }
+.mc-connections-page .person-card + .person-card { border-top: 1px solid var(--border); }
+.mc-connections-page .person-card > strong { flex: 1; min-width: 100px; }
+.mc-connections-page .person-card > small { color: var(--text-muted); }
+.mc-messenger { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 15px; min-height: 480px; align-items: stretch; }
+.mc-dialog-sidebar { min-width: 0; overflow: hidden; }
+.mc-dialog-sidebar > .feature-back { margin: 10px 16px; }
+.mc-dialog-sidebar .dialog-search { margin: 0; padding: 18px 15px; border-bottom: 1px solid var(--border); }
+.mc-dialog-sidebar .feature-section-title { margin: 20px 15px 12px; font-size: 16px; }
+.mc-dialog-sidebar .dialog-row { padding: 18px 15px; gap: 11px; flex-wrap: wrap; }
+.mc-dialog-sidebar .dialog-person { min-width: 0; flex-basis: calc(100% - 50px); }
+.mc-dialog-sidebar .dialog-person strong { font-size: 14px; }
+.mc-dialog-sidebar .dialog-row time { font-size: 11px; margin-left: 47px; }
+.mc-dialog-sidebar .dialog-preview { font-size: 12px; }
+.mc-dialog-selected { background: var(--surface-raised); box-shadow: inset 3px 0 var(--link); }
+.mc-chat-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; color: var(--text-muted); }
+.mc-chat-placeholder h2 { font-size: 20px; color: var(--text); }
+.mc-chat-placeholder p { max-width: 300px; line-height: 1.7; }
+.mc-dialog-page .conversation-panel { margin: 0; padding: 20px; display: flex; flex-direction: column; min-width: 0; }
+.mc-dialog-page .conversation-log { flex: 1; max-height: 55dvh; overflow-y: auto; padding: 0 2px; }
+.mc-dialog-page .message-bubble { padding: 12px 15px; max-width: 90%; border-radius: 12px 12px 12px 0; }
+.mc-dialog-page .message-own { border-radius: 12px 12px 0 12px; background: color-mix(in srgb, var(--accent-fill) 10%, var(--surface)); border-color: var(--border); }
+.mc-dialog-page .message-bubble p { font-size: 14px; }
+.mc-dialog-page .message-form textarea { min-height: 48px; height: 64px; }
+.mc-notifications-page .personal-filters { gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.mc-notifications-page .personal-filters button { border: 0; border-radius: 0; padding: 12px 18px; background: transparent; }
+.mc-notifications-page .personal-filters button[aria-pressed=true] { box-shadow: inset 0 -2px var(--link); }
+.mc-notifications-page .personal-notices { padding: 0 24px; }
+.mc-notifications-page .personal-notices li { padding: 20px 0; }
+.mc-notifications-page .mc-notice-unread { background: color-mix(in srgb, var(--accent-fill) 5%, var(--surface)); }
+.mc-notifications-page .personal-notice-actions { justify-content: flex-start; }
+.mc-settings-page { max-width: none; }
+.mc-settings-page .settings-panel { padding: 28px; }
+.mc-settings-page .settings-options { grid-template-columns: 1fr; max-width: 640px; gap: 10px; }
+.mc-settings-page .settings-option { min-height: 62px; }
+.mc-settings-page .settings-group + .settings-group { padding-top: 24px; border-top: 1px solid var(--border); }
+.mc-auth-card { width: 100%; max-width: 480px; margin: 30px auto; padding: 35px; }
+.mc-auth-symbol { color: var(--link); margin-bottom: 20px; }
+.mc-auth-card .page-title { display: block; text-align: left; margin-bottom: 24px; }
+.mc-auth-card .page-title h1 { font-size: 28px; margin-top: 14px; }
+.mc-auth-card .page-description { font-size: 14px; }
+.mc-auth-card .mc-auth-form { max-width: none; padding: 0; margin: 0; display: grid; gap: 18px; border: 0; box-shadow: none; }
+.mc-auth-form > .button { width: 100%; }
+.mc-auth-form input { min-width: 0; width: 100%; }
+.mc-auth-form > p:last-child { font-size: 13px; line-height: 1.7; color: var(--text-muted); margin: 0; }
+.mc-auth-form > p:last-child a { color: var(--link); display: inline-flex; min-height: 44px; align-items: center; }
+@media (max-width: 767px) {
+  .mc-messenger { grid-template-columns: 1fr; min-height: 0; }
+  .mc-messages-page .mc-chat-placeholder, .mc-messenger-active .mc-dialog-sidebar { display: none; }
+  .mc-garage-page .mc-vehicle-grid { grid-template-columns: 1fr; }
+  .mc-profile-page .mc-profile-editor { grid-template-columns: 1fr; padding: 20px; }
+  .mc-profile-editor label:has(textarea), .mc-profile-editor .form-buttons { grid-column: auto; }
+  .mc-profile-identity { padding-inline: 20px; }
+  .mc-profile-cover { height: 110px; }
+  .mc-connections-page .mc-people-list { padding: 0 16px; }
+  .mc-connections-page .person-card > small { flex-basis: calc(100% - 50px); margin-left: 50px; }
+  .mc-connections-page .person-card .card-actions { width: 100%; display: flex; flex-wrap: wrap; }
+  .mc-settings-page .settings-panel { padding: 20px; }
+  .mc-notifications-page .personal-notices { padding: 0 16px; }
+  .mc-dialog-page .conversation-panel { padding: 16px; }
+  .mc-auth-card { padding: 24px; margin: 10px auto; }
+}
+@media (prefers-reduced-motion: reduce) { .mc-account-page { scroll-behavior: auto; } }

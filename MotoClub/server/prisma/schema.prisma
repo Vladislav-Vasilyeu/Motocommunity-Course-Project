@@ -33,7 +33,8 @@ enum TripStatus {
 model User {
   id                     String            @id @default(uuid())
   email                  String            @unique
-  passwordHash           String
+  passwordHash           String?
+  googleSubject          String?           @unique
   displayName            String
   role                   UserRole          @default(USER)
   createdAt              DateTime          @default(now())
@@ -60,6 +61,42 @@ model User {
   dialogsB               Dialog[]          @relation("DialogUserB")
   messagesSent           Message[]         @relation("MessageSender")
   messagesReceived       Message[]         @relation("MessageRecipient")
+  reportsSubmitted       Report[]          @relation("ReportReporter")
+  reportsReviewed        Report[]          @relation("ReportReviewer")
+}
+
+enum ReportTargetType {
+  USER
+  POST
+  LISTING
+  COMMUNITY
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
+model Report {
+  id          String           @id @default(uuid())
+  reporterId  String
+  targetType  ReportTargetType
+  targetId    String
+  targetTitle String
+  reason      String
+  status      ReportStatus     @default(PENDING)
+  createdAt   DateTime         @default(now())
+  reviewedAt  DateTime?
+  reviewerId  String?
+  action      String?
+  note        String           @default("")
+  reporter    User             @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reviewer    User?            @relation("ReportReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@index([reporterId, createdAt, id])
+  @@index([status, createdAt, id])
+  @@index([targetType, targetId])
 }
 
 model UserProfile {

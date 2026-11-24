@@ -15,7 +15,7 @@ Frontend отвечает за маршруты, страницы, формы и
 
 ## Стек
 
-- Клиент: React, TypeScript, Vite, Leaflet и OpenStreetMap.
+- Клиент: React, TypeScript, Vite, Google Maps JavaScript API.
 - API: Node.js, Express 5, TypeScript.
 - База данных: PostgreSQL 17, Prisma ORM 7.
 - Архитектура: модульный монолит; клиент обращается к HTTP API.
@@ -43,9 +43,24 @@ Frontend отвечает за маршруты, страницы, формы и
 
 Перед публичным развёртыванием задайте `AUTH_SECRET` длиной не менее 32 символов. `.env` и секреты исключены из Git; в репозитории хранится только `.env.example`.
 
+## Google Maps и вход через Google
+
+Создайте проект в Google Cloud. Для карты и входа используются разные учётные данные.
+
+- **Карта.** Включите Maps JavaScript API и настройте биллинг. Создайте ключ, ограничьте его этим API и разрешёнными сайтами (для разработки — `http://localhost:5173/*`). Запишите ключ в `VITE_GOOGLE_MAPS_API_KEY` в корневом `.env` и перезапустите frontend. Для production задайте собственный Map ID в `VITE_GOOGLE_MAPS_MAP_ID`; при локальной проверке используется демонстрационный ID Google. Без ключа список мест и данные маршрута остаются доступны.
+- **Вход.** Настройте экран согласия и создайте OAuth-клиент типа Web application. Добавьте точный redirect URI `http://localhost:3000/api/auth/google/callback`. Укажите `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` и `CLIENT_ORIGIN` в `.env`, затем перезапустите API. Для рабочего окружения frontend и API должны быть на одном сайте (например, поддоменах одного домена), чтобы работала сессионная cookie. Если OAuth-приложение в режиме тестирования, добавьте аккаунт в тестовые пользователи. `GOOGLE_CLIENT_SECRET` доступен только серверу.
+- Перед запуском обновлённого API выполните `npm --prefix server run db:deploy` и `npm --prefix server run db:generate`. Миграция также исправляет две конкретные испорченные демонстрационные строки, сохраняя пользовательские правки.
+
+Если email уже зарегистрирован с паролем, сначала войдите с паролем, откройте «Настройки → Вход через Google» и нажмите «Подключить Google». Выберите Google с тем же email, который указан в профиле MotoClub. После подключения можно выходить и входить через Google в тот же профиль. После сообщения `email_in_use` успешный вход с паролем сам открывает нужный раздел настроек. Автоматической привязки по совпадению email нет; callback проверяет исходную сессию и пользователя, совпадение email и уникальность Google subject. Замена уже подключённого Google через этот сценарий запрещена.
+
+`GET /api/auth/google` возвращает `{ enabled, linked }`, явная привязка начинается через `/api/auth/google/start?mode=link`. Проверка backend: `npm --prefix server run build`, затем `node server/scripts/check-google-link.mjs`. По умолчанию проверяются HTTP-отказы без базы; для проверки сохранения задайте `DATABASE_URL` отдельной базы со всеми миграциями и `GOOGLE_LINK_ALLOW_WRITES=1`. Скрипт использует синтетический ответ Google, временные аккаунты и удаляет созданные записи в `finally`; настоящий вход в личный Google-аккаунт в эту проверку не входит.
+
+Кнопка использует прозрачный SVG из [официального примера Google](https://developers.google.com/static/identity/images/branding_guideline_sample_nt_sq_sl.svg) и нейтральную схему из [правил оформления Google](https://developers.google.com/identity/branding-guidelines).
+
 ## Реализованные HTTP-маршруты
 
 - `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`.
+- `GET /api/auth/google`, `GET /api/auth/google/start`, `GET /api/auth/google/callback` — вход через Google.
 - `GET /api/users/:id`, `PATCH /api/profile`.
 - CRUD гаража через `/api/motorcycles`.
 - Лента и публикации через `/api/posts`.
@@ -60,3 +75,15 @@ Frontend отвечает за маршруты, страницы, формы и
 - [Архитектура](docs/architecture.md)
 - [ER-диаграмма](docs/er-diagram.md)
 - [UX/UI варианты и анализ аналогов](docs/design-options.md)
+- [Функциональная версия от 19 ноября: задачи, проверки и ограничения](docs/functional-checkpoint-2026-11-19.md)
+- [Компоновка по новому приложению: перенос от 24 ноября](docs/layout-reference-2026-11-24.md)
+
+## Тема, язык и модерация
+
+В `/settings` доступны светлая, тёмная и системная темы, русский и английский языки. Изменения применяются сразу и сохраняются в браузере; вход не требуется. Настройки открываются из меню профиля, а для гостя — кнопкой в шапке. Публикации, имена и другие пользовательские данные не переводятся.
+
+Цвета задаются семантическими CSS-переменными в `src/index.css`, режим — в `src/features/preferences/theme.ts`. Скрипт `public/theme-init.js` применяет тему до загрузки интерфейса. Словари и конфигурация локалей находятся в `src/shared/translations.ts` и `src/shared/i18n.ts`; для новой локали добавьте словарь, запись в `locales` и сопоставление в `dictionaries`. Выбор появится в настройках. Сохраняйте исходные значения категорий в API, переводите только подписи. Используйте `Intl` или общие функции форматирования для дат, чисел, валют и множественного числа.
+
+Действие «Пожаловаться» доступно у чужих публикаций, объявлений, сообществ и райдеров. `/reports` показывает свои обращения. `/moderation` доступен модераторам и администраторам; сервер проверяет текущую роль по базе. API: `POST/GET /api/reports`, `GET /api/moderation/reports`, `PATCH /api/moderation/reports/:id`.
+
+Для локальной проверки модерации можно перед seed временно задать `$env:SEED_DEMO_MODERATOR='1'`. Будет добавлен отдельный `moderator@motoclub.local` с демонстрационным паролем `RideSafe2026!`; существующие роли не повышаются. Затем удалите переменную: `Remove-Item Env:SEED_DEMO_MODERATOR`. Не используйте этот режим в публичном окружении.

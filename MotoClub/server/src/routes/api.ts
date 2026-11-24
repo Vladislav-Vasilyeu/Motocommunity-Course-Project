@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { reportsRouter } from "./reports.js";
 import { prisma } from "../db/client.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { parseCoordinate } from "../lib/coordinates.js";
@@ -11,6 +12,7 @@ import { listingFilters, sellerSummary } from "../services/listing-favorites.ser
 import { respondToFriendRequest, sendFriendRequest } from "../services/friend-requests.service.js";
 
 export const apiRouter = Router();
+apiRouter.use(reportsRouter);
 apiRouter.use(routesRouter);
 apiRouter.use(dialogsRouter);
 apiRouter.use(maintenanceRouter);

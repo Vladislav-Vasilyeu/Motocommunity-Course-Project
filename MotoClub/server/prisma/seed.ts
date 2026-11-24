@@ -17,7 +17,7 @@ const rider2 = await prisma.user.upsert({
   update: {},
   create: {
     email: "ilya@motoclub.local",
-    displayName: "РР»СЊСЏ Р РѕРјР°РЅРѕРІ",
+    displayName: "Илья Романов",
     passwordHash: await hashPassword("RideSafe2026!"),
     profile: { create: { city: "Минск", ridingStyle: "Туринг" } },
   },
@@ -41,7 +41,7 @@ const community1 = await prisma.community.upsert({
 await prisma.community.upsert({
   where: { id: "community-touring" },
   update: {},
-  create: { id: "community-touring", ownerId: rider3.id, name: "Туринг Беларусь", description: "Дальние поездки, подготовка техники и полезные остановки.", city: "Р‘РµР»Р°СЂСѓСЃСЊ" },
+  create: { id: "community-touring", ownerId: rider3.id, name: "Туринг Беларусь", description: "Дальние поездки, подготовка техники и полезные остановки.", city: "Беларусь" },
 });
 for (const [communityId, userId] of [[community1.id, demo.id], [community1.id, rider2.id], [community1.id, rider3.id]]) {
   await prisma.communityMember.upsert({ where: { communityId_userId: { communityId, userId } }, update: {}, create: { communityId, userId } });
@@ -90,6 +90,54 @@ await prisma.place.upsert({
   where: { id: "place-naroch-cafe" }, update: {},
   create: { id: "place-naroch-cafe", creatorId: rider2.id, name: "Кафе у озера", category: "Кафе", city: "Нарочь", latitude: 54.9, longitude: 26.7, description: "Парковка рядом и тёплый кофе." },
 });
+
+// Extend the local demonstration without replacing existing user changes.
+const scenicRoute = await prisma.route.upsert({
+  where: { id: "route-demo-naroch" }, update: {},
+  create: {
+    id: "route-demo-naroch", authorId: rider2.id, title: "К озеру через Логойск",
+    description: "Дорога для спокойного выезда с остановкой на кофе.",
+    waypoints: { create: [
+      { position: 1, title: "Минск", latitude: 53.9, longitude: 27.56 },
+      { position: 2, title: "Логойск", latitude: 54.2, longitude: 27.85 },
+      { position: 3, title: "Нарочь", latitude: 54.9, longitude: 26.7 },
+    ] },
+  },
+});
+await prisma.routeFavorite.upsert({
+  where: { routeId_userId: { routeId: scenicRoute.id, userId: demo.id } },
+  update: {}, create: { routeId: scenicRoute.id, userId: demo.id },
+});
+await prisma.listingFavorite.upsert({
+  where: { listingId_userId: { listingId: "listing-jacket", userId: demo.id } },
+  update: {}, create: { listingId: "listing-jacket", userId: demo.id },
+});
+await prisma.maintenanceRecord.upsert({
+  where: { id: "maintenance-demo-oil" }, update: {},
+  create: { id: "maintenance-demo-oil", motorcycleId: "motorcycle-demo", title: "Замена масла и фильтра",
+    date: new Date("2026-11-01T00:00:00.000Z"), mileage: 18000, cost: 125, notes: "Следующая проверка через 6000 км." },
+});
+const [userAId, userBId] = [demo.id, rider2.id].sort();
+const dialog = await prisma.dialog.upsert({
+  where: { userAId_userBId: { userAId, userBId } },
+  update: {}, create: { userAId, userBId },
+});
+await prisma.message.upsert({
+  where: { id: "message-demo-ride" }, update: {},
+  create: { id: "message-demo-ride", dialogId: dialog.id, senderId: rider2.id, recipientId: demo.id,
+    content: "Привет! Встречаемся перед поездкой у точки сбора. Возьми дождевик." },
+});
+await prisma.notification.upsert({
+  where: { id: "notification-demo-message" }, update: {},
+  create: { id: "notification-demo-message", recipientId: demo.id, actorId: rider2.id, type: "NEW_MESSAGE" },
+});
+if (process.env.SEED_DEMO_MODERATOR === "1") {
+  await prisma.user.upsert({
+    where: { email: "moderator@motoclub.local" }, update: {},
+    create: { email: "moderator@motoclub.local", displayName: "Модератор Moto Club", role: "MODERATOR",
+      passwordHash: await hashPassword("RideSafe2026!"), profile: { create: { city: "Минск" } } },
+  });
+}
 
 console.log("MotoClub demo data is ready.");
 await prisma.$disconnect();
