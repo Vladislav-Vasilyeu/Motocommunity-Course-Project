@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db/client.js";
 import { createSessionToken, hashPassword, sessionCookieOptions, verifyPassword } from "../lib/auth.js";
 import { requireAuth } from "../middleware/auth.js";
+import { Prisma } from "../generated/prisma/client.js";
 
 export const authRouter = Router();
 
@@ -43,6 +44,10 @@ authRouter.post("/api/auth/register", async (request, response, next) => {
     response.cookie("motoclub_session", createSessionToken(user.id, user.role), sessionCookieOptions());
     response.status(201).json({ user });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      response.status(409).json({ error: { code: "EMAIL_IN_USE", message: "Этот адрес уже зарегистрирован" } });
+      return;
+    }
     next(error);
   }
 });

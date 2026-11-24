@@ -1,5 +1,6 @@
 // Russian source strings are stable dictionary keys. Add a dictionary and locale config to support another language.
 export const en: Record<string, string> = {
+  "Размер запроса превышает допустимый лимит": "The request exceeds the size limit",
   "Редактировать профиль": "Edit profile",
   "Все разделы": "All sections",
   "Личные разделы": "Personal sections",

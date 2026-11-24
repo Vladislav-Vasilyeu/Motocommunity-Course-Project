@@ -11,6 +11,11 @@ export const errorHandler: ErrorRequestHandler = (error, _request, response, nex
     return;
   }
 
+  if (error && typeof error === "object" && error.type === "entity.too.large") {
+    response.status(413).json({ error: { code: "PAYLOAD_TOO_LARGE", message: "Размер запроса превышает допустимый лимит" } });
+    return;
+  }
+
   console.error(error);
   response.status(500).json({
     error: {
