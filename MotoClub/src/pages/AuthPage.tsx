@@ -1,3 +1,5 @@
+import Icon from '../shared/Icon'
+import './reference-account.css'
 import { t, useLocale } from '../shared/i18n'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
@@ -71,13 +73,14 @@ export default function AuthPage() {
   if (user) return <div className="panel callout">{t("Вы вошли как")}{' '}{user.displayName}. <Link to="/profile">{t("Открыть профиль")}</Link></div>
 
   return (
-    <>
+    <section className="panel mc-auth-card">
+      <div className="mc-auth-symbol"><Icon name="bike" size={52}/></div>
       <PageTitle
         eyebrow="MotoClub"
         title={isRegister ? t("Создать аккаунт") : t("Войти")}
         description={isRegister ? t("Присоединяйтесь к сообществу райдеров.") : t("Войдите, чтобы публиковать и сохранять изменения.")}
       />
-      <form className="panel auth-form" onSubmit={submit}>
+      <form className="auth-form mc-auth-form" onSubmit={submit}>
         {googleError && <p className="form-error" role="alert">{t(googleError)}</p>}
         {isRegister && (
           <label>{t("Имя")}<input name="displayName" minLength={2} maxLength={60} autoComplete="name" required /></label>
@@ -101,6 +104,6 @@ export default function AuthPage() {
           <Link to={isRegister ? `/login${searchParams.get('googleError') === 'email_in_use' ? '?googleError=email_in_use' : ''}` : '/register'}>{isRegister ? t("Войти") : t("Создать аккаунт")}</Link>
         </p>
       </form>
-    </>
+    </section>
   )
 }

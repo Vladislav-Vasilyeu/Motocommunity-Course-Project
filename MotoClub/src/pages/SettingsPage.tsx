@@ -1,3 +1,4 @@
+import './reference-account.css'
 import { useState } from 'react'
 import googleLogo from '../assets/google-g.svg'
 import { Link, useSearchParams } from 'react-router'
@@ -20,7 +21,7 @@ export default function SettingsPage() {
     { value: 'light', label: 'Светлая' },
     { value: 'dark', label: 'Тёмная' },
   ]
-  return <div className="settings-page">
+  return <div className="settings-page mc-account-page mc-settings-page">
     <PageTitle eyebrow={t('Интерфейс')} title={t('Настройки')} description={t('Тема и язык применяются сразу и сохраняются в этом браузере.')}/>
     <div className="panel settings-panel">
       <fieldset className="settings-group"><legend>{t('Оформление')}</legend>

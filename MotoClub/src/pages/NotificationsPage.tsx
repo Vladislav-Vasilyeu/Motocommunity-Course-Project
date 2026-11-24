@@ -1,3 +1,4 @@
+import './reference-account.css'
 import { t, useLocale, getIntlLocale } from '../shared/i18n'
 import { useState } from 'react'
 import { Link } from 'react-router'
@@ -48,7 +49,7 @@ export default function NotificationsPage() {
 
   if (loading) return <LoadingState/>
   if (!user) return <EmptyState title={t("Уведомления")} description={t("Войдите, чтобы увидеть события вашего аккаунта.")} action={<Link className="button button-primary" to="/login">{t("Войти")}</Link>}/>
-  return <div className="personal-feature">
+  return <div className="personal-feature mc-account-page mc-notifications-page">
     <PageTitle title={t("Уведомления")} eyebrow={t("Мой аккаунт")} description={t("Сообщения и события вашего сообщества.")}
       action={<button className="button button-secondary" type="button" onClick={() => void mark()} disabled={busy || !notices.some(notice => !isRead(notice))}>{t("Прочитать все")}</button>}/>
     <div className="personal-filters" aria-label={t("Показывать уведомления")}>
@@ -57,7 +58,7 @@ export default function NotificationsPage() {
     </div>
     {error && <ErrorState message={error}/>}
     {resource.loading ? <LoadingState/> : resource.error ? <ErrorState message={resource.error} onRetry={resource.reload}/> : visible.length === 0 ? <EmptyState title={unreadOnly ? t("Всё прочитано") : t("Пока нет уведомлений")} description={unreadOnly ? t("Все события доступны во вкладке «Все».") : t("Здесь появятся сообщения и заявки в друзья.")}/> :
-      <ul className="panel personal-notices">{visible.map(notice => <li key={notice.id}>
+      <ul className="panel personal-notices">{visible.map(notice => <li key={notice.id} className={!isRead(notice) ? "mc-notice-unread" : undefined}>
         <span aria-hidden="true" className="avatar">{notice.actor?.displayName.slice(0, 1).toUpperCase() ?? 'M'}</span>
         <div className="personal-notice-copy"><strong>{t(text[notice.type])}</strong><p>{notice.actor?.displayName ?? t("Участник Moto Club")} · <time dateTime={notice.createdAt}>{new Date(notice.createdAt).toLocaleString(getIntlLocale(), { dateStyle: 'medium', timeStyle: 'short' })}</time></p>{!isRead(notice) && <span className="status-pill">{t("Новое")}</span>}</div>
         <div className="personal-notice-actions">

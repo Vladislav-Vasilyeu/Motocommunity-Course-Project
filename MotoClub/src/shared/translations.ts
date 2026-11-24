@@ -1,5 +1,18 @@
 // Russian source strings are stable dictionary keys. Add a dictionary and locale config to support another language.
 export const en: Record<string, string> = {
+  "Редактировать профиль": "Edit profile",
+  "Все разделы": "All sections",
+  "Личные разделы": "Personal sections",
+  "Мотосообщество": "Motorcycle community",
+  "Найдите сообщество по интересам и присоединяйтесь к обсуждению.": "Find a community that shares your interests and join the conversation.",
+  "Найти клуб": "Find a club",
+  "Не удалось выйти. Попробуйте снова.": "Could not sign out. Please try again.",
+  "Общайтесь, находите единомышленников и делитесь своей историей.": "Connect with fellow riders and share your story.",
+  "Регистрация": "Sign up",
+  "Сообщество Moto Club": "Moto Club community",
+  "Твои люди. Твоя дорога.": "Your people. Your road.",
+  "Гараж": "Garage",
+  "Создать публикацию": "Create a post",
   "Этот email уже зарегистрирован. Войдите с паролем, затем подключите Google в настройках. После этого вы сможете входить через Google.": "This email is already registered. Sign in with your password, then connect Google in Settings. You can then sign in with Google.",
   "Сессия изменилась. Войдите в свой аккаунт и начните подключение Google заново.": "Your session has changed. Sign in to your account and start connecting Google again.",
   "Выберите аккаунт Google с тем же email, который указан в вашем профиле MotoClub.": "Choose the Google account with the same email as your MotoClub profile.",
